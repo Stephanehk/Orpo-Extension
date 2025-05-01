@@ -50,6 +50,9 @@ def create_env(config):
     base_env = PandemicPolicyGymEnv(config)
     return RewardWrapper(base_env, reward_model=config.get("reward_model", "default"))
 
+# Make create_env a global variable that can be overridden
+create_env = create_env
+
 @ex.config
 def env_config():
     env_to_run = "tomato"  # noqa: F841
