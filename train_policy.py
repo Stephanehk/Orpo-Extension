@@ -5,62 +5,49 @@ from typing import Dict, List, Optional, Type, Union
 import numpy as np
 import ray
 import torch
-import torch.nn as nn
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.algorithms.ppo import PPO, PPOConfig
 from ray.rllib.env.multi_agent_env import make_multi_agent
+from ray.rllib.models import ModelV2
 from ray.rllib.models.torch.torch_action_dist import TorchDistributionWrapper
 from ray.rllib.policy.policy import Policy
 from ray.rllib.policy.sample_batch import SampleBatch
 from ray.rllib.utils.typing import TensorType
 from ray.tune.registry import register_env, register_trainable
 from pandemic_simulator.environment.pandemic_env import PandemicPolicyGymEnv
-from ray.rllib.core.rl_module.rl_module import RLModule
-from ray.rllib.core.rl_module.torch.torch_rl_module import TorchRLModule
-from ray.rllib.models.specs.specs_dict import SpecDict
-from ray.rllib.models.specs.specs_torch import TorchTensorSpec
 from sacred import Experiment
 from sacred import SETTINGS as sacred_settings
 
 # Custom reward model that you can modify
-class CustomRewardModule(TorchRLModule):
-    def __init__(self, config):
-        super().__init__(config)
-        self.reward_net = nn.Sequential(
-            nn.Linear(config.observation_space.shape[0] + config.action_space.shape[0], 256),
-            nn.ReLU(),
-            nn.Linear(256, 256),
-            nn.ReLU(),
-            nn.Linear(256, 1)
+class CustomRewardModel(ModelV2):
+    def __init__(self, obs_space, action_space, num_outputs, model_config, name):
+        super().__init__(obs_space, action_space, num_outputs, model_config, name)
+        self.reward_net = torch.nn.Sequential(
+            torch.nn.Linear(obs_space.shape[0] + action_space.shape[0], 256),
+            torch.nn.ReLU(),
+            torch.nn.Linear(256, 256),
+            torch.nn.ReLU(),
+            torch.nn.Linear(256, 1)
         )
         
-    def _forward_inference(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        obs = batch[SampleBatch.OBS]
-        actions = batch[SampleBatch.ACTIONS]
+    def forward(self, input_dict, state, seq_lens):
+        # This is where you can modify the reward function
+        obs = input_dict[SampleBatch.OBS]
+        actions = input_dict[SampleBatch.ACTIONS]
+        
+        # Example reward function - modify this to your needs
         reward = self.reward_net(torch.cat([obs, actions], dim=1))
-        return {SampleBatch.REWARDS: reward}
+        
+        # Return dummy logits and state
+        return torch.zeros((obs.shape[0], self.num_outputs)), state
 
-    def _forward_exploration(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        return self._forward_inference(batch)
-
-    def _forward_train(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        return self._forward_inference(batch)
-
-    def get_input_specs(self) -> SpecDict:
-        return {
-            SampleBatch.OBS: TorchTensorSpec("b, h", h=self.config.observation_space.shape[0]),
-            SampleBatch.ACTIONS: TorchTensorSpec("b, a", a=self.config.action_space.shape[0]),
-        }
-
-    def get_output_specs(self) -> SpecDict:
-        return {
-            SampleBatch.REWARDS: TorchTensorSpec("b, 1"),
-        }
+    def value_function(self):
+        return torch.zeros(1)
 
 # Pandemic reward model that implements the proxy reward function
-class PandemicRewardModule(TorchRLModule):
-    def __init__(self, config):
-        super().__init__(config)
+class PandemicRewardModel(ModelV2):
+    def __init__(self, obs_space, action_space, num_outputs, model_config, name):
+        super().__init__(obs_space, action_space, num_outputs, model_config, name)
         
         # Extract observation components
         self.critical_infection_idx = 0  # Index of critical infection count in observation
@@ -73,8 +60,9 @@ class PandemicRewardModule(TorchRLModule):
         self.stage_weight = 0.1  # Weight for lower stage preference
         self.smooth_weight = 0.01  # Weight for smooth stage changes
         
-    def _forward_inference(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        obs = batch[SampleBatch.OBS]
+    def forward(self, input_dict, state, seq_lens):
+        obs = input_dict[SampleBatch.OBS]
+        actions = input_dict[SampleBatch.ACTIONS]
         
         # Extract components from observation
         critical_infections = obs[:, self.critical_infection_idx]
@@ -90,23 +78,12 @@ class PandemicRewardModule(TorchRLModule):
         # Combine rewards
         total_reward = infection_reward + political_reward + stage_reward + smooth_reward
         
-        return {SampleBatch.REWARDS: total_reward.unsqueeze(-1)}
+        # Return the rewards as logits and state
+        return total_reward.unsqueeze(-1), state
 
-    def _forward_exploration(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        return self._forward_inference(batch)
-
-    def _forward_train(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        return self._forward_inference(batch)
-
-    def get_input_specs(self) -> SpecDict:
-        return {
-            SampleBatch.OBS: TorchTensorSpec("b, h", h=self.config.observation_space.shape[0]),
-        }
-
-    def get_output_specs(self) -> SpecDict:
-        return {
-            SampleBatch.REWARDS: TorchTensorSpec("b, 1"),
-        }
+    def value_function(self):
+        assert False
+        return torch.zeros(1)
 
 def train_policy(
     env_to_run: str,
@@ -165,9 +142,9 @@ def train_policy(
 
     # Select reward model
     if reward_model == "pandemic":
-        model_class = PandemicRewardModule
+        model_class = PandemicRewardModel
     else:
-        model_class = CustomRewardModule
+        model_class = CustomRewardModel
     
     # Set up environment configuration
     if env_to_run == "pandemic":
@@ -208,11 +185,9 @@ def train_policy(
         entropy_coeff=entropy_coeff,
         clip_param=clip_param,
         lambda_=lambda_,
-    ).rl_module(
-        _enable_rl_module_api=True,
-        rl_module_spec={
-            "module_class": model_class,
-        }
+        model={
+            "custom_model": model_class,
+        },
     ).resources(
         num_gpus=num_gpus,
     )
