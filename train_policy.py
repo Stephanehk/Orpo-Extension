@@ -15,6 +15,8 @@ from ray.rllib.policy.sample_batch import SampleBatch
 from ray.rllib.utils.typing import TensorType
 from ray.tune.registry import register_env, register_trainable
 from pandemic_simulator.environment.pandemic_env import PandemicPolicyGymEnv
+from sacred import Experiment
+from sacred import SETTINGS as sacred_settings
 
 # Custom reward model that you can modify
 class CustomRewardModel(ModelV2):
@@ -134,7 +136,10 @@ def train_policy(
     """
     # Initialize Ray
     ray.init(ignore_reinit_error=True)
-    
+
+    ex = Experiment("orpo_experiments", save_git_info=False)
+    sacred_settings.CONFIG.READ_ONLY_CONFIG = False
+
     # Select reward model
     if reward_model == "pandemic":
         model_class = PandemicRewardModel
@@ -145,10 +150,12 @@ def train_policy(
     if env_to_run == "pandemic":
         # Import pandemic configuration
         from occupancy_measures.experiments.pandemic_experiments import create_pandemic_config
-        
+        from extensions.utils.custom_configs import pandemic_configs
         # Create pandemic configuration
-        ex = create_pandemic_config()
-        env_config = ex.configurations[0].config["env_config"]
+        # ex = create_pandemic_config(ex)
+        
+        # env_config = ex.configurations[0].config["env_config"]
+        env_config = pandemic_configs()
         
         # Update environment name
         env_name = "pandemic_env_multiagent"
