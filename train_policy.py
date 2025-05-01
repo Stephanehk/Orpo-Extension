@@ -18,6 +18,8 @@ from pandemic_simulator.environment.pandemic_env import PandemicPolicyGymEnv
 from sacred import Experiment
 from sacred import SETTINGS as sacred_settings
 
+from custom_policy import CustomPolicy
+
 # Custom reward model that you can modify
 class CustomRewardModel(ModelV2):
     def __init__(self, obs_space, action_space, num_outputs, model_config, name):
@@ -106,7 +108,7 @@ def train_policy(
     num_training_iterations: int = 1000,
     checkpoint_freq: int = 10,
     checkpoint_at_end: bool = True,
-    reward_model: str = "custom",  # Add reward model selection
+    reward_model: str = "custom",
 ):
     """
     Train a policy with the specified parameters and reward function.
@@ -139,22 +141,11 @@ def train_policy(
 
     ex = Experiment("orpo_experiments", save_git_info=False)
     sacred_settings.CONFIG.READ_ONLY_CONFIG = False
-
-    # Select reward model
-    if reward_model == "pandemic":
-        model_class = PandemicRewardModel
-    else:
-        model_class = CustomRewardModel
     
     # Set up environment configuration
     if env_to_run == "pandemic":
         # Import pandemic configuration
-        from occupancy_measures.experiments.pandemic_experiments import create_pandemic_config
         from extensions.utils.custom_configs import pandemic_configs
-        # Create pandemic configuration
-        # ex = create_pandemic_config(ex)
-        
-        # env_config = ex.configurations[0].config["env_config"]
         env_config = pandemic_configs()
         
         # Update environment name
@@ -185,12 +176,15 @@ def train_policy(
         entropy_coeff=entropy_coeff,
         clip_param=clip_param,
         lambda_=lambda_,
-        model={
-            "custom_model": model_class,
-        },
     ).resources(
         num_gpus=num_gpus,
     )
+    
+    # Set the custom policy
+    config.policy_class = CustomPolicy
+    config.policy_config = {
+        "reward_model": reward_model
+    }
     
     # Create the algorithm
     algo = PPO(config=config)
