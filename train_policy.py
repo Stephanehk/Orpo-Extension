@@ -1,91 +1,20 @@
 import argparse
 import logging
-from typing import Dict, List, Optional, Type, Union
+from typing import Dict, Optional
 
-import numpy as np
 import ray
-import torch
-from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.algorithms.ppo import PPO, PPOConfig
 from ray.rllib.env.multi_agent_env import make_multi_agent
-from ray.rllib.models import ModelV2
-from ray.rllib.models.torch.torch_action_dist import TorchDistributionWrapper
-from ray.rllib.policy.policy import Policy
-from ray.rllib.policy.sample_batch import SampleBatch
-from ray.rllib.utils.typing import TensorType
-from ray.tune.registry import register_env, register_trainable
+from ray.tune.registry import register_env
 from pandemic_simulator.environment.pandemic_env import PandemicPolicyGymEnv
 from sacred import Experiment
 from sacred import SETTINGS as sacred_settings
 
-from custom_policy import CustomPolicy
+from reward_wrapper import RewardWrapper
 
-# Custom reward model that you can modify
-class CustomRewardModel(ModelV2):
-    def __init__(self, obs_space, action_space, num_outputs, model_config, name):
-        super().__init__(obs_space, action_space, num_outputs, model_config, name)
-        self.reward_net = torch.nn.Sequential(
-            torch.nn.Linear(obs_space.shape[0] + action_space.shape[0], 256),
-            torch.nn.ReLU(),
-            torch.nn.Linear(256, 256),
-            torch.nn.ReLU(),
-            torch.nn.Linear(256, 1)
-        )
-        
-    def forward(self, input_dict, state, seq_lens):
-        # This is where you can modify the reward function
-        obs = input_dict[SampleBatch.OBS]
-        actions = input_dict[SampleBatch.ACTIONS]
-        
-        # Example reward function - modify this to your needs
-        reward = self.reward_net(torch.cat([obs, actions], dim=1))
-        
-        # Return dummy logits and state
-        return torch.zeros((obs.shape[0], self.num_outputs)), state
-
-    def value_function(self):
-        return torch.zeros(1)
-
-# Pandemic reward model that implements the proxy reward function
-class PandemicRewardModel(ModelV2):
-    def __init__(self, obs_space, action_space, num_outputs, model_config, name):
-        super().__init__(obs_space, action_space, num_outputs, model_config, name)
-        
-        # Extract observation components
-        self.critical_infection_idx = 0  # Index of critical infection count in observation
-        self.stage_idx = 1  # Index of current stage in observation
-        self.prev_stage_idx = 2  # Index of previous stage in observation
-        
-        # Reward weights for different components
-        self.infection_weight = 10.0  # Weight for critical infection count
-        self.political_weight = 0.0  # Weight for political component (0 in proxy reward)
-        self.stage_weight = 0.1  # Weight for lower stage preference
-        self.smooth_weight = 0.01  # Weight for smooth stage changes
-        
-    def forward(self, input_dict, state, seq_lens):
-        obs = input_dict[SampleBatch.OBS]
-        actions = input_dict[SampleBatch.ACTIONS]
-        
-        # Extract components from observation
-        critical_infections = obs[:, self.critical_infection_idx]
-        current_stage = obs[:, self.stage_idx]
-        prev_stage = obs[:, self.prev_stage_idx]
-        
-        # Calculate reward components
-        infection_reward = -self.infection_weight * critical_infections
-        political_reward = torch.zeros_like(infection_reward)  # 0 in proxy reward
-        stage_reward = -self.stage_weight * current_stage
-        smooth_reward = -self.smooth_weight * torch.abs(current_stage - prev_stage)
-        
-        # Combine rewards
-        total_reward = infection_reward + political_reward + stage_reward + smooth_reward
-        
-        # Return the rewards as logits and state
-        return total_reward.unsqueeze(-1), state
-
-    def value_function(self):
-        assert False
-        return torch.zeros(1)
+def create_env(config):
+    base_env = PandemicPolicyGymEnv(config)
+    return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom"))
 
 def train_policy(
     env_to_run: str,
@@ -152,7 +81,7 @@ def train_policy(
         env_name = "pandemic_env_multiagent"
         register_env(
             env_name,
-            make_multi_agent(lambda config: PandemicPolicyGymEnv(config)),
+            make_multi_agent(lambda config: create_env(config)),
         )
     else:
         raise NotImplementedError(f"Environment {env_to_run} is not implemented yet")
@@ -180,11 +109,8 @@ def train_policy(
         num_gpus=num_gpus,
     )
     
-    # Set the custom policy
-    config.policy_class = CustomPolicy
-    config.policy_config = {
-        "reward_model": reward_model
-    }
+    # Add reward model to env config
+    config.env_config["reward_model"] = reward_model
     
     # Create the algorithm
     algo = PPO(config=config)
