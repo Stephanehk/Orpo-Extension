@@ -1,0 +1,213 @@
+
+CondaError: Run 'conda init' before 'conda activate'
+
+2025-04-30 23:18:58,979	WARNING deprecation.py:50 -- DeprecationWarning: `DirectStepOptimizer` has been deprecated. This will raise an error in the future!
+/next/u/stephhk/miniconda3/envs/orpo/lib/python3.9/site-packages/flow/utils/flow_warnings.py:23: PendingDeprecationWarning: The attribute minGap in SumoCarFollowingParams is deprecated, use min_gap instead.
+  warnings.warn(
+2025-04-30 23:19:02,067	WARNING algorithm_config.py:2604 -- config._enable_rl_module_api was set to False, but no prior exploration config was found to be restored.
+2025-04-30 23:19:02,067	WARNING algorithm_config.py:672 -- Cannot create AlgorithmConfig from given `config_dict`! Property sgd_minibatch_size not supported.
+INFO - root - Saving experiment results to pandemic/ORPO/proxy/model_128-128/state/weights_10.0_0.1_0.01/kl-0.06/seed_0
+WARNING - orpo_experiments - No observers have been added to this run
+INFO - orpo_experiments - Running command 'main'
+INFO - orpo_experiments - Started
+2025-04-30 23:19:05,112	INFO worker.py:1642 -- Started a local Ray instance.
+2025-04-30 23:19:06,720	WARNING algorithm_config.py:2578 -- Setting `exploration_config={}` because you set `_enable_rl_module_api=True`. When RLModule API are enabled, exploration_config can not be set. If you want to implement custom exploration behaviour, please modify the `forward_exploration` method of the RLModule at hand. On configs that have a default exploration config, this must be done with `config.exploration_config={}`.
+2025-04-30 23:19:06,722	WARNING algorithm_config.py:2592 -- Setting `exploration_config={'type': 'StochasticSampling'}` because you set `_enable_rl_module_api=False`. This exploration config was restored from a prior exploration config that was overriden when setting `_enable_rl_module_api=True`. This occurs because when RLModule API are enabled, exploration_config can not be set.
+[2m[36m(pid=2005570)[0m DeprecationWarning: `DirectStepOptimizer` has been deprecated. This will raise an error in the future!
+[2m[36m(RolloutWorker pid=2005570)[0m 2025-04-30 23:19:14,211	WARNING algorithm_config.py:2578 -- Setting `exploration_config={}` because you set `_enable_rl_module_api=True`. When RLModule API are enabled, exploration_config can not be set. If you want to implement custom exploration behaviour, please modify the `forward_exploration` method of the RLModule at hand. On configs that have a default exploration config, this must be done with `config.exploration_config={}`.
+[2m[36m(RolloutWorker pid=2005570)[0m 2025-04-30 23:19:14,214	WARNING deprecation.py:50 -- DeprecationWarning: `ray.rllib.models.torch.torch_modelv2.TorchModelV2` has been deprecated. Use `ray.rllib.core.rl_module.rl_module.RLModule` instead. This will raise an error in the future!
+[2m[36m(RolloutWorker pid=2005570)[0m 2025-04-30 23:19:14,214	WARNING deprecation.py:50 -- DeprecationWarning: `ray.rllib.models.torch.fcnet.FullyConnectedNetwork` has been deprecated. This will raise an error in the future!
+[2m[36m(RolloutWorker pid=2005570)[0m 2025-04-30 23:19:14,229	WARNING catalog.py:629 -- Custom ModelV2 should accept all custom options as **kwargs, instead of expecting them in config['custom_model_config']!
+[2m[36m(RolloutWorker pid=2005570)[0m 2025-04-30 23:19:17,785	WARNING deprecation.py:50 -- DeprecationWarning: `ValueNetworkMixin` has been deprecated. This will raise an error in the future!
+[2m[36m(RolloutWorker pid=2005570)[0m 2025-04-30 23:19:17,785	WARNING deprecation.py:50 -- DeprecationWarning: `LearningRateSchedule` has been deprecated. This will raise an error in the future!
+[2m[36m(RolloutWorker pid=2005570)[0m 2025-04-30 23:19:17,785	WARNING deprecation.py:50 -- DeprecationWarning: `EntropyCoeffSchedule` has been deprecated. This will raise an error in the future!
+[2m[36m(RolloutWorker pid=2005570)[0m 2025-04-30 23:19:17,785	WARNING deprecation.py:50 -- DeprecationWarning: `KLCoeffMixin` has been deprecated. This will raise an error in the future!
+[2m[36m(RolloutWorker pid=2005570)[0m 2025-04-30 23:19:17,791	WARNING deprecation.py:50 -- DeprecationWarning: `ray.rllib.models.torch.torch_action_dist.TorchDistributionWrapper` has been deprecated. Use `ray.rllib.models.torch.torch_distributions.TorchCategorical` instead. This will raise an error in the future!
+[2m[36m(RolloutWorker pid=2005570)[0m 'is_safe_policy' key not found in train batch
+[2m[36m(RolloutWorker pid=2005570)[0m 'discriminator_rewards' key not found in train batch
+[2m[36m(pid=2005571)[0m DeprecationWarning: `DirectStepOptimizer` has been deprecated. This will raise an error in the future!
+2025-04-30 23:19:17,868	WARNING algorithm_config.py:2578 -- Setting `exploration_config={}` because you set `_enable_rl_module_api=True`. When RLModule API are enabled, exploration_config can not be set. If you want to implement custom exploration behaviour, please modify the `forward_exploration` method of the RLModule at hand. On configs that have a default exploration config, this must be done with `config.exploration_config={}`.
+2025-04-30 23:19:17,871	WARNING deprecation.py:50 -- DeprecationWarning: `ray.rllib.models.torch.torch_modelv2.TorchModelV2` has been deprecated. Use `ray.rllib.core.rl_module.rl_module.RLModule` instead. This will raise an error in the future!
+2025-04-30 23:19:17,871	WARNING deprecation.py:50 -- DeprecationWarning: `ray.rllib.models.torch.fcnet.FullyConnectedNetwork` has been deprecated. This will raise an error in the future!
+2025-04-30 23:19:17,884	WARNING catalog.py:629 -- Custom ModelV2 should accept all custom options as **kwargs, instead of expecting them in config['custom_model_config']!
+2025-04-30 23:19:20,565	WARNING deprecation.py:50 -- DeprecationWarning: `ValueNetworkMixin` has been deprecated. This will raise an error in the future!
+2025-04-30 23:19:20,565	WARNING deprecation.py:50 -- DeprecationWarning: `LearningRateSchedule` has been deprecated. This will raise an error in the future!
+2025-04-30 23:19:20,565	WARNING deprecation.py:50 -- DeprecationWarning: `EntropyCoeffSchedule` has been deprecated. This will raise an error in the future!
+2025-04-30 23:19:20,565	WARNING deprecation.py:50 -- DeprecationWarning: `KLCoeffMixin` has been deprecated. This will raise an error in the future!
+/next/u/stephhk/miniconda3/envs/orpo/lib/python3.9/site-packages/torch/nn/modules/linear.py:125: UserWarning: Could not parse CUBLAS_WORKSPACE_CONFIG, using default workspace size of 8519680 bytes. (Triggered internally at /pytorch/aten/src/ATen/cuda/CublasHandlePool.cpp:145.)
+  return F.linear(input, self.weight, self.bias)
+2025-04-30 23:19:20,656	WARNING deprecation.py:50 -- DeprecationWarning: `ray.rllib.models.torch.torch_action_dist.TorchDistributionWrapper` has been deprecated. Use `ray.rllib.models.torch.torch_distributions.TorchCategorical` instead. This will raise an error in the future!
+WARNING - occupancy_measures.agents.orpo - 'is_safe_policy' key not found in train batch
+WARNING - occupancy_measures.agents.orpo - 'discriminator_rewards' key not found in train batch
+2025-04-30 23:19:21,459	WARNING algorithm_config.py:2578 -- Setting `exploration_config={}` because you set `_enable_rl_module_api=True`. When RLModule API are enabled, exploration_config can not be set. If you want to implement custom exploration behaviour, please modify the `forward_exploration` method of the RLModule at hand. On configs that have a default exploration config, this must be done with `config.exploration_config={}`.
+2025-04-30 23:19:21,464	WARNING catalog.py:629 -- Custom ModelV2 should accept all custom options as **kwargs, instead of expecting them in config['custom_model_config']!
+WARNING - occupancy_measures.agents.orpo - 'is_safe_policy' key not found in train batch
+WARNING - occupancy_measures.agents.orpo - 'discriminator_rewards' key not found in train batch
+2025-04-30 23:19:21,502	INFO trainable.py:188 -- Trainable.setup took 14.684 seconds. If your trainable is slow to initialize, consider setting reuse_actors=True to reduce actor creation overheads.
+2025-04-30 23:19:21,502	WARNING util.py:68 -- Install gputil for GPU system monitoring.
+/next/u/stephhk/miniconda3/envs/orpo/lib/python3.9/site-packages/ray/train/_internal/syncer.py:95: UserWarning: `SyncConfig(upload_dir)` is a deprecated configuration and will be ignored. Please remove it from your `SyncConfig`, as this will raise an error in a future version of Ray.
+Please specify `train.RunConfig(storage_path)` instead.
+  warnings.warn(
+/next/u/stephhk/miniconda3/envs/orpo/lib/python3.9/site-packages/ray/train/_internal/syncer.py:95: UserWarning: `SyncConfig(syncer)` is a deprecated configuration and will be ignored. Please remove it from your `SyncConfig`, as this will raise an error in a future version of Ray.
+Please implement custom syncing logic with a custom `pyarrow.fs.FileSystem` instead, and pass it into `train.RunConfig(storage_filesystem)`.
+  warnings.warn(
+INFO - main - loading policy safe_policy0 from data/base_policy_checkpoints/pandemic_base_policy/checkpoint_000100...
+WARNING - occupancy_measures.models.model_with_discriminator - discriminator weights do not match the current discriminator architecture; ignoring discriminator weights
+INFO - main - loading policy current from data/base_policy_checkpoints/pandemic_base_policy/checkpoint_000100...
+WARNING - occupancy_measures.models.model_with_discriminator - discriminator weights do not match the current discriminator architecture; ignoring discriminator weights
+INFO - main - Starting training iteration 0
+[2m[36m(RolloutWorker pid=2005570)[0m discriminator weights do not match the current discriminator architecture; ignoring discriminator weights
+[2m[36m(RolloutWorker pid=2005570)[0m discriminator weights do not match the current discriminator architecture; ignoring discriminator weights
+[2m[36m(RolloutWorker pid=2005571)[0m 2025-04-30 23:19:17,808	WARNING algorithm_config.py:2578 -- Setting `exploration_config={}` because you set `_enable_rl_module_api=True`. When RLModule API are enabled, exploration_config can not be set. If you want to implement custom exploration behaviour, please modify the `forward_exploration` method of the RLModule at hand. On configs that have a default exploration config, this must be done with `config.exploration_config={}`.[32m [repeated 3x across cluster] (Ray deduplicates logs by default. Set RAY_DEDUP_LOGS=0 to disable log deduplication, or see https://docs.ray.io/en/master/ray-observability/ray-logging.html#log-deduplication for more options.)[0m
+[2m[36m(RolloutWorker pid=2005571)[0m 2025-04-30 23:19:17,816	WARNING catalog.py:629 -- Custom ModelV2 should accept all custom options as **kwargs, instead of expecting them in config['custom_model_config']![32m [repeated 3x across cluster][0m
+2025-04-30 23:24:00,940	WARNING deprecation.py:50 -- DeprecationWarning: `ray.rllib.execution.train_ops.train_one_step` has been deprecated. This will raise an error in the future!
+2025-04-30 23:24:00,941	WARNING deprecation.py:50 -- DeprecationWarning: `_get_slice_indices` has been deprecated. This will raise an error in the future!
+/next/u/stephhk/miniconda3/envs/orpo/lib/python3.9/site-packages/torch/autograd/graph.py:824: UserWarning: Could not parse CUBLAS_WORKSPACE_CONFIG, using default workspace size of 8519680 bytes. (Triggered internally at /pytorch/aten/src/ATen/cuda/CublasHandlePool.cpp:145.)
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+INFO - main - Starting training iteration 1
+INFO - main - Starting training iteration 2
+INFO - main - Starting training iteration 3
+INFO - main - Starting training iteration 4
+INFO - main - Starting training iteration 5
+INFO - main - Starting training iteration 6
+INFO - main - Starting training iteration 7
+INFO - main - Starting training iteration 8
+INFO - main - Starting training iteration 9
+INFO - main - Starting training iteration 10
+INFO - main - Starting training iteration 11
+INFO - main - Starting training iteration 12
+INFO - main - Starting training iteration 13
+INFO - main - Starting training iteration 14
+INFO - main - Starting training iteration 15
+INFO - main - Starting training iteration 16
+INFO - main - Starting training iteration 17
+INFO - main - Starting training iteration 18
+INFO - main - Starting training iteration 19
+INFO - main - Starting training iteration 20
+INFO - main - Starting training iteration 21
+INFO - main - Starting training iteration 22
+INFO - main - Starting training iteration 23
+INFO - main - Starting training iteration 24
+2025-05-01 01:16:14,545	WARNING policy.py:137 -- Can not figure out a durable policy name for <class 'occupancy_measures.agents.orpo.ORPOPolicy'>. You are probably trying to checkpoint a custom policy. Raw policy class may cause problems when the checkpoint needs to be loaded in the future. To fix this, make sure you add your custom policy in rllib.algorithms.registry.POLICIES.
+2025-05-01 01:16:14,551	WARNING policy.py:137 -- Can not figure out a durable policy name for <class 'occupancy_measures.agents.orpo.ORPOPolicy'>. You are probably trying to checkpoint a custom policy. Raw policy class may cause problems when the checkpoint needs to be loaded in the future. To fix this, make sure you add your custom policy in rllib.algorithms.registry.POLICIES.
+INFO - main - Saved checkpoint to data/logs/pandemic/ORPO/proxy/model_128-128/state/weights_10.0_0.1_0.01/kl-0.06/seed_0/2025-04-30_23-19-06/checkpoint_000025
+INFO - main - Starting training iteration 25
+INFO - main - Starting training iteration 26
+INFO - main - Starting training iteration 27
+INFO - main - Starting training iteration 28
+INFO - main - Starting training iteration 29
+INFO - main - Starting training iteration 30
+INFO - main - Starting training iteration 31
+INFO - main - Starting training iteration 32
+INFO - main - Starting training iteration 33
+INFO - main - Starting training iteration 34
+INFO - main - Starting training iteration 35
+INFO - main - Starting training iteration 36
+INFO - main - Starting training iteration 37
+INFO - main - Starting training iteration 38
+INFO - main - Starting training iteration 39
+INFO - main - Starting training iteration 40
+INFO - main - Starting training iteration 41
+INFO - main - Starting training iteration 42
+INFO - main - Starting training iteration 43
+INFO - main - Starting training iteration 44
+INFO - main - Starting training iteration 45
+INFO - main - Starting training iteration 46
+INFO - main - Starting training iteration 47
+INFO - main - Starting training iteration 48
+INFO - main - Starting training iteration 49
+2025-05-01 03:13:15,018	WARNING policy.py:137 -- Can not figure out a durable policy name for <class 'occupancy_measures.agents.orpo.ORPOPolicy'>. You are probably trying to checkpoint a custom policy. Raw policy class may cause problems when the checkpoint needs to be loaded in the future. To fix this, make sure you add your custom policy in rllib.algorithms.registry.POLICIES.
+2025-05-01 03:13:15,022	WARNING policy.py:137 -- Can not figure out a durable policy name for <class 'occupancy_measures.agents.orpo.ORPOPolicy'>. You are probably trying to checkpoint a custom policy. Raw policy class may cause problems when the checkpoint needs to be loaded in the future. To fix this, make sure you add your custom policy in rllib.algorithms.registry.POLICIES.
+INFO - main - Saved checkpoint to data/logs/pandemic/ORPO/proxy/model_128-128/state/weights_10.0_0.1_0.01/kl-0.06/seed_0/2025-04-30_23-19-06/checkpoint_000050
+INFO - main - Starting training iteration 50
+INFO - main - Starting training iteration 51
+INFO - main - Starting training iteration 52
+INFO - main - Starting training iteration 53
+INFO - main - Starting training iteration 54
+INFO - main - Starting training iteration 55
+INFO - main - Starting training iteration 56
+INFO - main - Starting training iteration 57
+INFO - main - Starting training iteration 58
+INFO - main - Starting training iteration 59
+INFO - main - Starting training iteration 60
+INFO - main - Starting training iteration 61
+INFO - main - Starting training iteration 62
+INFO - main - Starting training iteration 63
+INFO - main - Starting training iteration 64
+INFO - main - Starting training iteration 65
+INFO - main - Starting training iteration 66
+INFO - main - Starting training iteration 67
+INFO - main - Starting training iteration 68
+INFO - main - Starting training iteration 69
+INFO - main - Starting training iteration 70
+INFO - main - Starting training iteration 71
+INFO - main - Starting training iteration 72
+INFO - main - Starting training iteration 73
+INFO - main - Starting training iteration 74
+2025-05-01 05:10:00,236	WARNING policy.py:137 -- Can not figure out a durable policy name for <class 'occupancy_measures.agents.orpo.ORPOPolicy'>. You are probably trying to checkpoint a custom policy. Raw policy class may cause problems when the checkpoint needs to be loaded in the future. To fix this, make sure you add your custom policy in rllib.algorithms.registry.POLICIES.
+2025-05-01 05:10:00,240	WARNING policy.py:137 -- Can not figure out a durable policy name for <class 'occupancy_measures.agents.orpo.ORPOPolicy'>. You are probably trying to checkpoint a custom policy. Raw policy class may cause problems when the checkpoint needs to be loaded in the future. To fix this, make sure you add your custom policy in rllib.algorithms.registry.POLICIES.
+INFO - main - Saved checkpoint to data/logs/pandemic/ORPO/proxy/model_128-128/state/weights_10.0_0.1_0.01/kl-0.06/seed_0/2025-04-30_23-19-06/checkpoint_000075
+INFO - main - Starting training iteration 75
+INFO - main - Starting training iteration 76
+INFO - main - Starting training iteration 77
+INFO - main - Starting training iteration 78
+INFO - main - Starting training iteration 79
+INFO - main - Starting training iteration 80
+INFO - main - Starting training iteration 81
+INFO - main - Starting training iteration 82
+INFO - main - Starting training iteration 83
+INFO - main - Starting training iteration 84
+INFO - main - Starting training iteration 85
+INFO - main - Starting training iteration 86
+INFO - main - Starting training iteration 87
+INFO - main - Starting training iteration 88
+INFO - main - Starting training iteration 89
+INFO - main - Starting training iteration 90
+INFO - main - Starting training iteration 91
+INFO - main - Starting training iteration 92
+INFO - main - Starting training iteration 93
+INFO - main - Starting training iteration 94
+INFO - main - Starting training iteration 95
+INFO - main - Starting training iteration 96
+INFO - main - Starting training iteration 97
+INFO - main - Starting training iteration 98
+INFO - main - Starting training iteration 99
+2025-05-01 07:06:44,532	WARNING policy.py:137 -- Can not figure out a durable policy name for <class 'occupancy_measures.agents.orpo.ORPOPolicy'>. You are probably trying to checkpoint a custom policy. Raw policy class may cause problems when the checkpoint needs to be loaded in the future. To fix this, make sure you add your custom policy in rllib.algorithms.registry.POLICIES.
+2025-05-01 07:06:44,536	WARNING policy.py:137 -- Can not figure out a durable policy name for <class 'occupancy_measures.agents.orpo.ORPOPolicy'>. You are probably trying to checkpoint a custom policy. Raw policy class may cause problems when the checkpoint needs to be loaded in the future. To fix this, make sure you add your custom policy in rllib.algorithms.registry.POLICIES.
+INFO - main - Saved checkpoint to data/logs/pandemic/ORPO/proxy/model_128-128/state/weights_10.0_0.1_0.01/kl-0.06/seed_0/2025-04-30_23-19-06/checkpoint_000100
+INFO - main - Starting training iteration 100
+INFO - main - Starting training iteration 101
+INFO - main - Starting training iteration 102
+INFO - main - Starting training iteration 103
+INFO - main - Starting training iteration 104
+INFO - main - Starting training iteration 105
+INFO - main - Starting training iteration 106
+INFO - main - Starting training iteration 107
+INFO - main - Starting training iteration 108
+INFO - main - Starting training iteration 109
+INFO - main - Starting training iteration 110
+INFO - main - Starting training iteration 111
+INFO - main - Starting training iteration 112
+INFO - main - Starting training iteration 113
+INFO - main - Starting training iteration 114
+INFO - main - Starting training iteration 115
+INFO - main - Starting training iteration 116
+INFO - main - Starting training iteration 117
+INFO - main - Starting training iteration 118
+INFO - main - Starting training iteration 119
+INFO - main - Starting training iteration 120
+INFO - main - Starting training iteration 121
+INFO - main - Starting training iteration 122
+INFO - main - Starting training iteration 123
+INFO - main - Starting training iteration 124
+2025-05-01 09:03:28,303	WARNING policy.py:137 -- Can not figure out a durable policy name for <class 'occupancy_measures.agents.orpo.ORPOPolicy'>. You are probably trying to checkpoint a custom policy. Raw policy class may cause problems when the checkpoint needs to be loaded in the future. To fix this, make sure you add your custom policy in rllib.algorithms.registry.POLICIES.
+2025-05-01 09:03:28,306	WARNING policy.py:137 -- Can not figure out a durable policy name for <class 'occupancy_measures.agents.orpo.ORPOPolicy'>. You are probably trying to checkpoint a custom policy. Raw policy class may cause problems when the checkpoint needs to be loaded in the future. To fix this, make sure you add your custom policy in rllib.algorithms.registry.POLICIES.
+INFO - main - Saved checkpoint to data/logs/pandemic/ORPO/proxy/model_128-128/state/weights_10.0_0.1_0.01/kl-0.06/seed_0/2025-04-30_23-19-06/checkpoint_000125
+INFO - main - Starting training iteration 125
+INFO - main - Starting training iteration 126
+INFO - main - Starting training iteration 127
+INFO - main - Starting training iteration 128
+INFO - main - Starting training iteration 129
+INFO - main - Starting training iteration 130
+INFO - main - Starting training iteration 131
+INFO - main - Starting training iteration 132
