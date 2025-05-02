@@ -1,6 +1,9 @@
 import os
 from typing import Callable, Optional, List, Union
-
+import ray
+from ray.rllib.algorithms import Algorithm
+from ray.rllib.evaluation.rollout_worker import RolloutWorker
+from ray.rllib.policy.policy import Policy
 from sacred import Experiment
 from extensions.reward_modeling.reward_wrapper import RewardWrapper
 from pandemic_simulator.environment.pandemic_env import PandemicPolicyGymEnv
@@ -39,6 +42,8 @@ def config():
     experiment_parts = [env_to_run]
     reward_wrapper_class = None  # Use default RewardWrapper if None
     num_training_iters = 260
+    num_rollouts = 10  # Number of rollouts to collect
+    rollout_length = 192  # Length of each rollout
 
 @iterative_ex.automain
 def main(
@@ -56,6 +61,8 @@ def main(
     experiment_parts,
     reward_wrapper_class,
     num_training_iters,
+    num_rollouts,
+    rollout_length,
     _log
 ):
     """
@@ -66,7 +73,7 @@ def main(
     create_env = lambda config: create_custom_env(config, reward_wrapper_class)
     
     # Run the original experiment with all the passed parameters
-    ex.run(
+    result = ex.run(
         config_updates={
             "env_to_run": env_to_run,
             "reward_fun": reward_fun,
@@ -82,12 +89,33 @@ def main(
             "experiment_parts": experiment_parts,
             "num_training_iters": num_training_iters,
         }
-    ) 
+    )
 
+    # Get the checkpoint path from the result
+    checkpoint_path = result.info.get("checkpoint")
+    if checkpoint_path is None:
+        raise ValueError("No checkpoint was saved during training")
 
-    #Next steps:
-    #(1) get the model that was just trained
+    # Load the trained algorithm
+    _log.info(f"Loading trained model from {checkpoint_path}")
+    algorithm = Algorithm.from_checkpoint(checkpoint_path)
+
+    # Collect rollouts
+    _log.info(f"Collecting {num_rollouts} rollouts of length {rollout_length}")
+    rollouts = []
+    for i in range(num_rollouts):
+        _log.info(f"Collecting rollout {i+1}/{num_rollouts}")
+        rollout = algorithm.compute_single_episode(
+            policy_id="current" if exp_algo == "ORPO" else "default",
+            episode_length=rollout_length,
+            explore=False  # Set to True if you want to use exploration
+        )
+        rollouts.append(rollout)
+        print (rollout)
+        print ("\n")
+
+    # Clean up
+    algorithm.stop()
     
-    #(2) rollout out the model
-    #(3) get preferences over rollouts
+    # return rollouts
 
