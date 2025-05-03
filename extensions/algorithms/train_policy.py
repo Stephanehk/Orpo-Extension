@@ -14,7 +14,12 @@ from ray.rllib.evaluation import RolloutWorker
 from ray.rllib.policy.policy import PolicySpec
 from ray.rllib.policy.sample_batch import DEFAULT_POLICY_ID
 from ray.rllib.utils.typing import MultiAgentPolicyConfigDict
+from ray.rllib.policy.sample_batch import MultiAgentBatch, SampleBatch, concat_samples
 from pandemic_simulator.environment.pandemic_env import PandemicPolicyGymEnv
+from ray.rllib.execution.rollout_ops import (
+    standardize_fields,
+    synchronous_parallel_sample,
+)
 from sacred import SETTINGS as sacred_settings
 from sacred import Experiment
 
@@ -35,19 +40,26 @@ from occupancy_measures.experiments.glucose_experiments import create_glucose_co
 from occupancy_measures.experiments.pandemic_experiments import create_pandemic_config
 from occupancy_measures.experiments.tomato_experiments import create_tomato_config
 from occupancy_measures.experiments.traffic_experiments import create_traffic_config
-from extensions.reward_modeling.reward_wrapper import RewardWrapper
+from extensions.reward_modeling.reward_wrapper import RewardWrapper,RewardModel
+
+# from extensions.algorithms import iterative_reward_design
 
 # from extensions.utils.setup_algs_and_env import common_config, create_multiagent
+
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 ex = Experiment("orpo_experiments", save_git_info=False)
 sacred_settings.CONFIG.READ_ONLY_CONFIG = False
 
+
 faulthandler.register(signal.SIGUSR1)
 
 def create_env(config):
     base_env = PandemicPolicyGymEnv(config)
+    # print ("obs, act space:")
+    # print (base_env.observation_space.shape)
+    # print (base_env.action_space.shape)
     return RewardWrapper(base_env, reward_model=config.get("reward_model", "default"))
 
 # Make create_env a global variable that can be overridden
@@ -551,7 +563,31 @@ def main(
     checkpoint = algorithm.save()
     # convert_to_msgpack_checkpoint(checkpoint, algorithm.logdir, AlgorithmClass)
     _log.info(f"Saved final checkpoint to {checkpoint}")
+    # result.info["checkpoint"] = checkpoint
+    # _log.info(f"Saved final checkpoint to {result.info['checkpoint']}")
+    #---------------------------------------------------
+    # eval_results = algorithm.evaluate()
+    # rollouts = eval_results["evaluation"]["hist_stats"]["episode_reward"]
+    # _log.info(f"Evaluation results: {eval_results}")
 
+    _log.info(f"WARNING: USING EXTRA SMALL TRAJECTORIES FOR DEBUGGING PURPOSES")
+    eval_batch = synchronous_parallel_sample(
+            worker_set=algorithm.workers, max_env_steps=algorithm.config.train_batch_size #worker_set=algorithm.workers, max_env_steps=algorithm.config.train_batch_size
+        )
+    # eval_batch = eval_batch.as_multi_agent()
+
+    # postprocessed_episodes: List[SampleBatch] = []
+    # current_policy = algorithm.get_policy("current")
+    # current_batch = eval_batch.policy_batches["current"]
+    # for episode_batch in current_batch.split_by_episode():
+    #     postprocessed_episodes.append(
+    #         current_policy.postprocess_trajectory(episode_batch)
+    #     )
+    # eval_batch.policy_batches["current"] = concat_samples(
+    #     postprocessed_episodes
+    # )
+    # _log.info(f"Evaluation results: {train_batch}")
+    #----------------------------------------------------
     algorithm.stop()
 
-    return result
+    return result,checkpoint,eval_batch
