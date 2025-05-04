@@ -9,6 +9,30 @@ import numpy as np
 from ray.rllib.utils.numpy import convert_to_numpy
 from ray.rllib.policy.rnn_sequencing import add_time_dimension
 from ray.rllib.policy.sample_batch import MultiAgentBatch, SampleBatch
+
+class ReplayBuffer:
+    def __init__(self, max_size=10000):
+        self.max_size = max_size
+        self.buffer = []
+        self.position = 0
+
+    def push(self, traj1, traj2, true_label):
+        if len(self.buffer) < self.max_size:
+            self.buffer.append(None)
+        self.buffer[self.position] = {
+            'traj1': traj1,
+            'traj2': traj2,
+            'true_label': true_label
+        }
+        self.position = (self.position + 1) % self.max_size
+
+    def sample(self, batch_size):
+        indices = np.random.choice(len(self.buffer), batch_size)
+        return [self.buffer[idx] for idx in indices]
+
+    def __len__(self):
+        return len(self.buffer)
+
 #create a Pytorch neural network for the reward model:
 class RewardModel(nn.Module):
     def __init__(self, obs_dim, action_dim,sequence_lens, discrete_actions, lr=0.001,n_epochs=100):
@@ -27,6 +51,9 @@ class RewardModel(nn.Module):
         #initialize Adam optimizer
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         self.n_epochs = n_epochs
+        
+        # Initialize replay buffer
+        self.replay_buffer = ReplayBuffer()
 
     def forward(self, x):
         x = torch.relu(self.fc1(x))
@@ -42,15 +69,20 @@ class RewardModel(nn.Module):
         self.train()
     
     def initialize_model(self):
-        # for param in self.parameters():
-        #     nn.init.constant_(param, 0.0)
-        # for module in self.modules():
-        #     if hasattr(module, 'bias') and module.bias is not None:
-        #         nn.init.zeros_(module.bias)
-        nn.init.zeros_(self.fc3.weight)
-        nn.init.zeros_(self.fc3.bias)
+        # Initialize all layers with Xavier/Glorot initialization
+        for layer in self.modules():
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                if layer.bias is not None:
+                    nn.init.zeros_(layer.bias)
+        
+        # Zero out the last layer
+        last_layer = list(self.modules())[-1]
+        if isinstance(last_layer, nn.Linear):
+            nn.init.zeros_(last_layer.weight)
+            if last_layer.bias is not None:
+                nn.init.zeros_(last_layer.bias)
             
-    
     def _create_sample_batch(self, rewards, actions, obs, reward_for_pref, proxy_rewards, index):
         return {
             SampleBatch.REWARDS: rewards[index],
@@ -154,6 +186,10 @@ class RewardModel(nn.Module):
         return rewards_sequences,acs_sequences,obs_sequences, reward_sequences_for_prefs, proxy_reward_seq
     
     def update_params(self,train_batch1, train_batch2):
+        # Re-initialize model weights
+        self.initialize_model()
+        self.train()
+        
         #seq lens:seq_lens: A 1D tensor of sequence lengths, denoting the non-padded length in timesteps of each rollout in the batch.
         # print (train_batch[SampleBatch.ACTIONS].shape)
         #I think seq_lens = [193, 193,...num traj] but gotta see the size first
@@ -167,47 +203,46 @@ class RewardModel(nn.Module):
         rewards_sequences1,acs_sequences1,obs_sequences1, reward_sequences_for_prefs1, proxy_reward_seq1 = self.get_batch_sequences(train_batch1,batch_seq_lens)
         rewards_sequences2,acs_sequences2,obs_sequences2, reward_sequences_for_prefs2, proxy_reward_seq2 = self.get_batch_sequences(train_batch2,batch_seq_lens)
        
+        # First add new trajectory pairs to the buffer
+        trajectory_pairs = [(0,1)]  # or whatever pairs you want to process
+        for indices_pair in trajectory_pairs:
+            traj1 = self._create_sample_batch(
+                rewards_sequences1,
+                acs_sequences1,
+                obs_sequences1,
+                reward_sequences_for_prefs1,
+                proxy_reward_seq1,
+                indices_pair[0],
+            )
+            traj2 = self._create_sample_batch(
+                rewards_sequences2,
+                acs_sequences2,
+                obs_sequences2,
+                reward_sequences_for_prefs2,
+                proxy_reward_seq2,
+                indices_pair[1],
+            )
+
+            true_reward_label = self._calculate_true_reward_comparisons(traj1, traj2).to(self.device)
+            self.replay_buffer.push(traj1, traj2, true_reward_label)
+        
+        # Then train on the entire replay buffer
         for _ in range(self.n_epochs):
             reward_model_loss = 0
-            # trajectory_pairs = [(i, j) for i in range(num_sequences) for j in range(num_sequences)]
-            trajectory_pairs = [(0,1)]
-            for indices_pair in trajectory_pairs:
-                traj1 = self._create_sample_batch(
-                    rewards_sequences1,
-                    acs_sequences1,
-                    obs_sequences1,
-                    reward_sequences_for_prefs1,
-                    proxy_reward_seq1,
-                    indices_pair[0],
-                )
-                traj2 = self._create_sample_batch(
-                    rewards_sequences2,
-                    acs_sequences2,
-                    obs_sequences2,
-                    reward_sequences_for_prefs2,
-                    proxy_reward_seq2,
-                    indices_pair[1],
-                )
-
+            for item in self.replay_buffer.buffer:
+                if item is None:
+                    continue
+                traj1 = item['traj1']
+                traj2 = item['traj2']
+                true_label = item['true_label']
+                
                 predicted_reward_probs = self._calculate_boltzmann_pred_probs(traj1, traj2).to(self.device)
-                true_reward_label = self._calculate_true_reward_comparisons(traj1, traj2).to(self.device)
-
                 reward_model_loss += torch.nn.functional.binary_cross_entropy(
-                    predicted_reward_probs, true_reward_label
+                    predicted_reward_probs, true_label
                 )
-                # print (reward_model_loss)
-                # print (predicted_reward_probs)
-                # print (true_reward_label)
-                # print ("\n")
-           
-            #update model params 
-        
+            
             self.optimizer.zero_grad()
             reward_model_loss.backward()
-            #print gradients
-            # for name, param in self.named_parameters():
-            #     if param.grad is not None:
-            #         print(f"Gradient for {name}: {param.grad}")
             self.optimizer.step()
   
         #save model state dict
@@ -228,6 +263,7 @@ class RewardWrapper(Wrapper):
                 discrete_actions = True, 
             )
             self.reward_net.load_params()
+            self.reward_net.eval()
         else:  # pandemic reward model
             # Extract observation components
             self.critical_infection_idx = 0
