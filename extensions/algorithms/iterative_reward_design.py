@@ -90,13 +90,13 @@ def main(
     reward_model = RewardModel(
         obs_dim=24*13, # Assuming the observation space is a 1D array of size 24*13
         action_dim=3,
-        sequence_lens=192,
+        sequence_lens=193,
         discrete_actions = True, 
     )
     #TODO: save reward model to disk so it can be loaded later by RewardWrapper
     
     
-    # Run the original experiment with all the passed parameters
+    Run the original experiment with all the passed parameters
     result = ex.run(
         config_updates={
             "env_to_run": env_to_run,
@@ -118,9 +118,6 @@ def main(
 
     eval_batch = result.result[2]
     
-    # print (eval_batch)
-    # print (eval_batch["current"])
-
     #TODO: replace this so that we use the trajectories from our 2 different policies
     reward_model.update_params(eval_batch["current"],eval_batch["current"])
 

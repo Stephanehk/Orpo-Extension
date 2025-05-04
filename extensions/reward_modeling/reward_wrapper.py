@@ -28,13 +28,12 @@ class RewardModel(nn.Module):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         self.n_epochs = n_epochs
 
-        self.seen_traj1s= []
-        self.seen_traj2s= []
-        
     def forward(self, x):
         x = torch.relu(self.fc1(x))
         x = torch.relu(self.fc2(x))
         x = self.fc3(x)
+        # print ("forward output:")
+        # print (x)
         return x
 
     def load_params(self):
@@ -43,8 +42,14 @@ class RewardModel(nn.Module):
         self.train()
     
     def initialize_model(self):
-        for param in self.parameters():
-            nn.init.constant_(param, 0.0)
+        # for param in self.parameters():
+        #     nn.init.constant_(param, 0.0)
+        # for module in self.modules():
+        #     if hasattr(module, 'bias') and module.bias is not None:
+        #         nn.init.zeros_(module.bias)
+        nn.init.zeros_(self.fc3.weight)
+        nn.init.zeros_(self.fc3.bias)
+            
     
     def _create_sample_batch(self, rewards, actions, obs, reward_for_pref, proxy_rewards, index):
         return {
@@ -86,12 +91,11 @@ class RewardModel(nn.Module):
 
     def _calculate_boltzmann_pred_probs(self, traj1, traj2):
        
-        obs = traj1["obs"].flatten(1)
-        net_input = self._get_concatenated_obs_action(obs, traj1["actions"]).to(self.device)
-        net_input.requires_grad = True
+        net_input1 = self._get_concatenated_obs_action(traj1["obs"].flatten(1), traj1["actions"]).to(self.device)
+        net_input2 = self._get_concatenated_obs_action(traj2["obs"].flatten(1), traj2["actions"]).to(self.device)
 
-        traj1_preds = self.forward(net_input).flatten()#TODO: need to figure out how to add initial reward values to these estimates
-        traj2_preds = self.forward(net_input).flatten()
+        traj1_preds = self.forward(net_input1).flatten()#TODO: need to figure out how to add initial reward values to these estimates
+        traj2_preds = self.forward(net_input2).flatten()
 
         #add original proxy reward to the predicted reward
         traj1_preds += torch.tensor(traj1["proxy_rewards"].flatten()).to(self.device)
@@ -153,18 +157,20 @@ class RewardModel(nn.Module):
         #seq lens:seq_lens: A 1D tensor of sequence lengths, denoting the non-padded length in timesteps of each rollout in the batch.
         # print (train_batch[SampleBatch.ACTIONS].shape)
         #I think seq_lens = [193, 193,...num traj] but gotta see the size first
+        
+        #-----
         assert len(train_batch1) == len(train_batch2)#doesn't necesserily have to be the case, but cleans up implementation
-        batch_seq_lens = [193 for _ in range(int(len(train_batch1)/193))]
+        batch_seq_lens = [self.sequence_lens for _ in range(int(len(train_batch1)/self.sequence_lens))]
         batch_seq_lens = torch.tensor(batch_seq_lens)
         num_sequences = len(batch_seq_lens)
        
         rewards_sequences1,acs_sequences1,obs_sequences1, reward_sequences_for_prefs1, proxy_reward_seq1 = self.get_batch_sequences(train_batch1,batch_seq_lens)
         rewards_sequences2,acs_sequences2,obs_sequences2, reward_sequences_for_prefs2, proxy_reward_seq2 = self.get_batch_sequences(train_batch2,batch_seq_lens)
-        
+       
         for _ in range(self.n_epochs):
             reward_model_loss = 0
-            trajectory_pairs = [(i, j) for i in range(num_sequences) for j in range(num_sequences)]
-
+            # trajectory_pairs = [(i, j) for i in range(num_sequences) for j in range(num_sequences)]
+            trajectory_pairs = [(0,1)]
             for indices_pair in trajectory_pairs:
                 traj1 = self._create_sample_batch(
                     rewards_sequences1,
@@ -189,17 +195,23 @@ class RewardModel(nn.Module):
                 reward_model_loss += torch.nn.functional.binary_cross_entropy(
                     predicted_reward_probs, true_reward_label
                 )
+                # print (reward_model_loss)
+                # print (predicted_reward_probs)
+                # print (true_reward_label)
+                # print ("\n")
            
             #update model params 
         
             self.optimizer.zero_grad()
             reward_model_loss.backward()
+            #print gradients
+            # for name, param in self.named_parameters():
+            #     if param.grad is not None:
+            #         print(f"Gradient for {name}: {param.grad}")
             self.optimizer.step()
-            print("Reward model loss:", reward_model_loss.item())
-            
+  
         #save model state dict
         torch.save(self.state_dict(), "active_models/reward_model.pth")
-        assert False
 
 class RewardWrapper(Wrapper):
     def __init__(self, env, reward_model="custom"):
