@@ -42,6 +42,7 @@ from occupancy_measures.experiments.pandemic_experiments import create_pandemic_
 from occupancy_measures.experiments.tomato_experiments import create_tomato_config
 from occupancy_measures.experiments.traffic_experiments import create_traffic_config
 from extensions.reward_modeling.reward_wrapper import RewardWrapper,RewardModel
+import extensions.algorithms.unique_id_state as unique_id_state
 
 # from extensions.algorithms import iterative_reward_design
 
@@ -58,18 +59,17 @@ faulthandler.register(signal.SIGUSR1)
 
 def create_env(config):
     base_env = PandemicPolicyGymEnv(config)
-    # Generate a unique ID for this experiment if not already set
-    if not hasattr(config, 'reward_model_id'):
-        config.reward_model_id = f"{config.env_config['reward_fun']}_{config.seed}_{int(time.time())}"
-    return RewardWrapper(base_env, reward_model=config.get("reward_model", "default"), unique_id=config.reward_model_id)
+    # Access unique_id from the config
+    return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom"), unique_id=unique_id_state.state["unique_id"])
 
 # Make create_env a global variable that can be overridden
 create_env = create_env
-
 @ex.config
 def env_config():
     env_to_run = "tomato"  # noqa: F841
     experiment_parts = [env_to_run]  # noqa: F841
+
+unique_id_state.state["unique_id"] = f"{int(time.time())}"
 
 create_glucose_config(ex)
 create_pandemic_config(ex,use_custom_rm=True,custom_rm=create_env)
@@ -88,6 +88,10 @@ def common_config(  # noqa: C901
     _log,
 ):  
     num_cpus = available_cpu_count()  # noqa: F841
+
+    # Add unique_id to config if not already present
+    if not hasattr(config, 'unique_id'):
+        config.unique_id = f"{config.env_config['reward_fun']}_{config.seed}_{int(time.time())}"
 
     exp_algo = "PPO"
     assert exp_algo in [

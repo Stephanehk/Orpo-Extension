@@ -49,12 +49,18 @@ class RewardModel(nn.Module):
         self.train()
         self.unique_id = unique_id
 
+        print ("Create rm with unique_id:", self.unique_id)
+
         #initialize Adam optimizer
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         self.n_epochs = n_epochs
         
         # Initialize replay buffer
         self.replay_buffer = ReplayBuffer()
+
+        if self.unique_id is None:
+            raise ValueError("unique_id must be set to save parameters")
+        torch.save(self.state_dict(), f"active_models/reward_model_{self.unique_id}.pth")
 
     def forward(self, x):
         x = torch.relu(self.fc1(x))
@@ -286,7 +292,7 @@ class RewardWrapper(Wrapper):
             self.smooth_weight = 0.01
     
     def _get_concatenated_obs_action(self, obs, actions):
-        if self.discrete_actions:
+        if self.reward_net.discrete_actions:
             encoded_actions = F.one_hot(actions.long(), self.reward_net.action_dim)
             net_input = torch.cat([obs, encoded_actions], dim=1)
         else:
@@ -302,7 +308,7 @@ class RewardWrapper(Wrapper):
         if self.reward_model == "custom":
             # Convert to tensors
             obs_tensor = torch.from_numpy(obs).float().unsqueeze(0)
-            action_tensor = torch.from_numpy(action).float().unsqueeze(0)
+            action_tensor = torch.tensor([action]).float()
             # Concatenate and compute reward
             net_input = self._get_concatenated_obs_action(obs_tensor.flatten(1), action_tensor).to(self.reward_net.device)
             reward = self.reward_net(net_input).squeeze().item() + original_reward

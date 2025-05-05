@@ -18,6 +18,8 @@ from pandemic_simulator.environment.pandemic_env import PandemicPolicyGymEnv
 from extensions.algorithms.train_policy import ex
 from extensions.environments.pandemic_configs import get_pandemic_env_gt_rew
 import extensions.algorithms.train_policy
+import extensions.algorithms.unique_id_state as unique_id_state
+import time
 
 # Create a new experiment for iterative reward design
 iterative_ex = Experiment("iterative_reward_design", save_git_info=False)
@@ -55,7 +57,6 @@ def config():
     experiment_parts = [env_to_run]
     reward_wrapper_class = None  # Use default RewardWrapper if None
     num_training_iters = 260,
-    unique_id = 1
     # num_rollouts = 10  # Number of rollouts to collect
     # rollout_length = 192  # Length of each rollout
 
@@ -78,12 +79,13 @@ def main(
     experiment_parts,
     reward_wrapper_class,
     num_training_iters,
-    unique_id,
     _log
 ):
     """
     Main function that runs the training with a configurable reward wrapper.
     """
+
+    # unique_id_state.state["unique_id"] = f"{reward_fun}_{seed}_{int(time.time())}"
 
     #all these args must be manual set per environment (annoying but we can't init gym env here) 
     reward_model = RewardModel(
@@ -91,9 +93,9 @@ def main(
         action_dim=3,
         sequence_lens=193,
         discrete_actions = True,
-        unique_id=unique_id
+        unique_id=unique_id_state.state["unique_id"]
     )    
-
+    
     for i in range(3):
         
         print ("======================")
@@ -120,8 +122,7 @@ def main(
                 "num_rollout_workers": num_rollout_workers,
                 "num_gpus": num_gpus,
                 "experiment_parts": experiment_parts,
-                "num_training_iters": num_training_iters,
-                "unique_id":unique_id
+                "num_training_iters": num_training_iters,      
             }
         )
         eval_batch_reference = reference_result.result[2]
@@ -141,7 +142,6 @@ def main(
                 "num_gpus": num_gpus,
                 "experiment_parts": experiment_parts,
                 "num_training_iters": num_training_iters,
-                "unique_id":unique_id
             }
         )
 
