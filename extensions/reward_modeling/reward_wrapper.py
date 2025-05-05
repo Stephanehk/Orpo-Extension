@@ -35,10 +35,10 @@ class ReplayBuffer:
 
 #create a Pytorch neural network for the reward model:
 class RewardModel(nn.Module):
-    def __init__(self, obs_dim, action_dim,sequence_lens, discrete_actions, lr=0.001,n_epochs=100):
+    def __init__(self, obs_dim, action_dim, sequence_lens, discrete_actions, lr=0.001, n_epochs=100, unique_id=None):
         super(RewardModel, self).__init__()
         self.sequence_lens = sequence_lens
-        self.action_dim= action_dim
+        self.action_dim = action_dim
         self.discrete_actions = discrete_actions
         self.fc1 = nn.Linear(obs_dim + action_dim, 256)
         self.fc2 = nn.Linear(256, 256)
@@ -47,6 +47,7 @@ class RewardModel(nn.Module):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.to(self.device)
         self.train()
+        self.unique_id = unique_id
 
         #initialize Adam optimizer
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
@@ -64,8 +65,10 @@ class RewardModel(nn.Module):
         return x
 
     def load_params(self):
+        if self.unique_id is None:
+            raise ValueError("unique_id must be set to load parameters")
         #load in state dict
-        self.load_state_dict(torch.load("active_models/reward_model.pth"))
+        self.load_state_dict(torch.load(f"active_models/reward_model_{self.unique_id}.pth"))
         self.train()
     
     def initialize_model(self):
@@ -185,7 +188,7 @@ class RewardModel(nn.Module):
 
         return rewards_sequences,acs_sequences,obs_sequences, reward_sequences_for_prefs, proxy_reward_seq
     
-    def update_params(self,train_batch1, train_batch2, iteration):
+    def update_params(self, train_batch1, train_batch2, iteration):
         # Re-initialize model weights
         self.initialize_model()
         self.train()
@@ -197,16 +200,11 @@ class RewardModel(nn.Module):
         batch_seq_lens = torch.tensor(batch_seq_lens)
         num_sequences = len(batch_seq_lens)
         print ("num_sequences:", num_sequences)
-        # print ("device:", self.device)
        
         rewards_sequences1,acs_sequences1,obs_sequences1, reward_sequences_for_prefs1, proxy_reward_seq1 = self.get_batch_sequences(train_batch1,batch_seq_lens)
         rewards_sequences2,acs_sequences2,obs_sequences2, reward_sequences_for_prefs2, proxy_reward_seq2 = self.get_batch_sequences(train_batch2,batch_seq_lens)
        
-        # First add new trajectory pairs to the buffer
-        # trajectory_pairs = [(0,1)]  # or whatever pairs you want to process
         trajectory_pairs = [(i, j) for i in range(num_sequences-1) for j in range(num_sequences-1)]
-        # print ("len(rewards_sequences1):", len(rewards_sequences1))
-        # print ("len(rewards_sequences2):", len(rewards_sequences2))
         for indices_pair in trajectory_pairs:
             traj1 = self._create_sample_batch(
                 rewards_sequences1,
@@ -248,20 +246,21 @@ class RewardModel(nn.Module):
             print (reward_model_loss)
             self.optimizer.step()
   
-        #save model state dict
-        torch.save(self.state_dict(), "active_models/reward_model.pth")
+        #save model state dict with unique ID
+        if self.unique_id is None:
+            raise ValueError("unique_id must be set to save parameters")
+        torch.save(self.state_dict(), f"active_models/reward_model_{self.unique_id}.pth")
         #save reward model loss
-        with open("active_models/reward_model_loss.txt", "a") as f:
+        with open(f"active_models/reward_model_loss_{self.unique_id}.txt", "a") as f:
             f.write(f"Iteration {iteration}: {reward_model_loss.item()}\n")
         #save replay buffer
-        with open("active_models/replay_buffer.pkl", "wb") as f:
+        with open(f"active_models/replay_buffer_{self.unique_id}.pkl", "wb") as f:
             torch.save(self.replay_buffer, f)
 
 class RewardWrapper(Wrapper):
-    def __init__(self, env, reward_model="custom"):
+    def __init__(self, env, reward_model="custom", unique_id=None):
         super().__init__(env)
         self.reward_model = reward_model
-        # print ("RewardWrapper initialized with reward loading_id:", loading_id)
         
         if reward_model == "custom":
             #load in reward model from disk
@@ -269,7 +268,8 @@ class RewardWrapper(Wrapper):
                 obs_dim=24*13, # Assuming the observation space is a 1D array of size 24*13
                 action_dim=3,
                 sequence_lens=193,
-                discrete_actions = True, 
+                discrete_actions = True,
+                unique_id=unique_id
             )
             self.reward_net.load_params()
             self.reward_net.eval()

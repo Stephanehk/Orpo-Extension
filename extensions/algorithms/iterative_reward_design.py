@@ -85,13 +85,13 @@ def main(
     Main function that runs the training with a configurable reward wrapper.
     """
 
-
     #all these args must be manual set per environment (annoying but we can't init gym env here) 
     reward_model = RewardModel(
         obs_dim=24*13, # Assuming the observation space is a 1D array of size 24*13
         action_dim=3,
         sequence_lens=193,
-        discrete_actions = True, 
+        discrete_actions = True,
+        unique_id=unique_id
     )    
 
     for i in range(3):

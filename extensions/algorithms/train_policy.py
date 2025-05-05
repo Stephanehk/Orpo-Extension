@@ -5,6 +5,7 @@ import tempfile
 import warnings
 from logging import Logger
 from typing import Dict, List, Optional, Type, Union
+import time
 
 import numpy as np
 import ray
@@ -57,10 +58,10 @@ faulthandler.register(signal.SIGUSR1)
 
 def create_env(config):
     base_env = PandemicPolicyGymEnv(config)
-    # print ("obs, act space:")
-    # print (base_env.observation_space.shape)
-    # print (base_env.action_space.shape)
-    return RewardWrapper(base_env, reward_model=config.get("reward_model", "default"))
+    # Generate a unique ID for this experiment if not already set
+    if not hasattr(config, 'reward_model_id'):
+        config.reward_model_id = f"{config.env_config['reward_fun']}_{config.seed}_{int(time.time())}"
+    return RewardWrapper(base_env, reward_model=config.get("reward_model", "default"), unique_id=config.reward_model_id)
 
 # Make create_env a global variable that can be overridden
 create_env = create_env
