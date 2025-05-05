@@ -118,20 +118,20 @@ class RewardModel(nn.Module):
             traj1_true_rewards, traj2_true_rewards
         )
         # softmax probability that traj 1 would be chosen over traj 2 based on the true reward
-        probs = torch.tensor(1 / (1 + torch.exp(rewards_diff)))
+        probs = 1 / (1 + torch.exp(rewards_diff))
         return (torch.rand(probs.size(), device=probs.device) < probs).float()
 
     def _calculate_boltzmann_pred_probs(self, traj1, traj2):
        
-        net_input1 = self._get_concatenated_obs_action(traj1["obs"].flatten(1), traj1["actions"]).to(self.device)
-        net_input2 = self._get_concatenated_obs_action(traj2["obs"].flatten(1), traj2["actions"]).to(self.device)
+        net_input1 = self._get_concatenated_obs_action(traj1["obs"].flatten(1).to(self.device), traj1["actions"].to(self.device))
+        net_input2 = self._get_concatenated_obs_action(traj2["obs"].flatten(1).to(self.device), traj2["actions"].to(self.device))
 
         traj1_preds = self.forward(net_input1).flatten()#TODO: need to figure out how to add initial reward values to these estimates
         traj2_preds = self.forward(net_input2).flatten()
 
         #add original proxy reward to the predicted reward
-        traj1_preds += torch.tensor(traj1["proxy_rewards"].flatten()).to(self.device)
-        traj2_preds += torch.tensor(traj2["proxy_rewards"].flatten()).to(self.device)
+        traj1_preds += traj1["proxy_rewards"].flatten().to(self.device)
+        traj2_preds += traj2["proxy_rewards"].flatten().to(self.device)
 
         preds_diff = self._calculate_discounted_sum_and_diffs(traj1_preds, traj2_preds)
         softmax_probs = 1 / (1 + preds_diff.exp())
@@ -185,26 +185,28 @@ class RewardModel(nn.Module):
 
         return rewards_sequences,acs_sequences,obs_sequences, reward_sequences_for_prefs, proxy_reward_seq
     
-    def update_params(self,train_batch1, train_batch2):
+    def update_params(self,train_batch1, train_batch2, iteration):
         # Re-initialize model weights
         self.initialize_model()
         self.train()
         
         #seq lens:seq_lens: A 1D tensor of sequence lengths, denoting the non-padded length in timesteps of each rollout in the batch.
-        # print (train_batch[SampleBatch.ACTIONS].shape)
-        #I think seq_lens = [193, 193,...num traj] but gotta see the size first
-        
-        #-----
+      
         assert len(train_batch1) == len(train_batch2)#doesn't necesserily have to be the case, but cleans up implementation
         batch_seq_lens = [self.sequence_lens for _ in range(int(len(train_batch1)/self.sequence_lens))]
         batch_seq_lens = torch.tensor(batch_seq_lens)
         num_sequences = len(batch_seq_lens)
+        print ("num_sequences:", num_sequences)
+        # print ("device:", self.device)
        
         rewards_sequences1,acs_sequences1,obs_sequences1, reward_sequences_for_prefs1, proxy_reward_seq1 = self.get_batch_sequences(train_batch1,batch_seq_lens)
         rewards_sequences2,acs_sequences2,obs_sequences2, reward_sequences_for_prefs2, proxy_reward_seq2 = self.get_batch_sequences(train_batch2,batch_seq_lens)
        
         # First add new trajectory pairs to the buffer
-        trajectory_pairs = [(0,1)]  # or whatever pairs you want to process
+        # trajectory_pairs = [(0,1)]  # or whatever pairs you want to process
+        trajectory_pairs = [(i, j) for i in range(num_sequences-1) for j in range(num_sequences-1)]
+        # print ("len(rewards_sequences1):", len(rewards_sequences1))
+        # print ("len(rewards_sequences2):", len(rewards_sequences2))
         for indices_pair in trajectory_pairs:
             traj1 = self._create_sample_batch(
                 rewards_sequences1,
@@ -243,10 +245,17 @@ class RewardModel(nn.Module):
             
             self.optimizer.zero_grad()
             reward_model_loss.backward()
+            print (reward_model_loss)
             self.optimizer.step()
   
         #save model state dict
         torch.save(self.state_dict(), "active_models/reward_model.pth")
+        #save reward model loss
+        with open("active_models/reward_model_loss.txt", "a") as f:
+            f.write(f"Iteration {iteration}: {reward_model_loss.item()}\n")
+        #save replay buffer
+        with open("active_models/replay_buffer.pkl", "wb") as f:
+            torch.save(self.replay_buffer, f)
 
 class RewardWrapper(Wrapper):
     def __init__(self, env, reward_model="custom"):
@@ -259,7 +268,7 @@ class RewardWrapper(Wrapper):
             self.reward_net = RewardModel(
                 obs_dim=24*13, # Assuming the observation space is a 1D array of size 24*13
                 action_dim=3,
-                sequence_lens=192,
+                sequence_lens=193,
                 discrete_actions = True, 
             )
             self.reward_net.load_params()
@@ -276,6 +285,14 @@ class RewardWrapper(Wrapper):
             self.stage_weight = 0.1
             self.smooth_weight = 0.01
     
+    def _get_concatenated_obs_action(self, obs, actions):
+        if self.discrete_actions:
+            encoded_actions = F.one_hot(actions.long(), self.reward_net.action_dim)
+            net_input = torch.cat([obs, encoded_actions], dim=1)
+        else:
+            net_input = torch.cat([obs, actions], dim=1)
+        net_input = net_input.to(torch.float32)
+        return net_input
 
     def step(self, action):
         # Get the original step result
@@ -286,10 +303,9 @@ class RewardWrapper(Wrapper):
             # Convert to tensors
             obs_tensor = torch.from_numpy(obs).float().unsqueeze(0)
             action_tensor = torch.from_numpy(action).float().unsqueeze(0)
-            
             # Concatenate and compute reward
-            obs_action = torch.cat([obs_tensor, action_tensor], dim=1)
-            reward = self.reward_net(obs_action).squeeze().item() + original_reward
+            net_input = self._get_concatenated_obs_action(obs_tensor.flatten(1), action_tensor).to(self.reward_net.device)
+            reward = self.reward_net(net_input).squeeze().item() + original_reward
         else:  # pandemic reward model
             # Convert to tensor
             # obs_tensor = torch.from_numpy(obs).float()

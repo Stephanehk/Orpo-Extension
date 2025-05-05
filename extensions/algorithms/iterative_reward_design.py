@@ -92,48 +92,66 @@ def main(
         action_dim=3,
         sequence_lens=193,
         discrete_actions = True, 
-    )
-    #TODO: save reward model to disk so it can be loaded later by RewardWrapper
-    
-    
-    Run the original experiment with all the passed parameters
-    result = ex.run(
-        config_updates={
-            "env_to_run": env_to_run,
-            "reward_fun": reward_fun,
-            "exp_algo": exp_algo,
-            "om_divergence_coeffs": om_divergence_coeffs_1,
-            "checkpoint_to_load_policies": checkpoint_to_load_policies,
-            "checkpoint_to_load_current_policy": checkpoint_to_load_current_policy,
-            "seed": seed,
-            "experiment_tag": experiment_tag,
-            "om_divergence_type": om_divergence_type,
-            "num_rollout_workers": num_rollout_workers,
-            "num_gpus": num_gpus,
-            "experiment_parts": experiment_parts,
-            "num_training_iters": num_training_iters,
-            "unique_id":unique_id
-        }
-    )
+    )    
 
-    eval_batch = result.result[2]
+    for i in range(3):
+        
+        print ("======================")
+        print ("checkpoint_to_load_current_policy", checkpoint_to_load_current_policy)
+        print ("checkpoint_to_load_policies", checkpoint_to_load_policies)
+        print ("======================")
+        # if i == 0:
+        # if (int(om_divergence_coeffs_1[0]) == 0 and i == 0) or int(om_divergence_coeffs_1[0]) != 0:
     
-    #TODO: replace this so that we use the trajectories from our 2 different policies
-    reward_model.update_params(eval_batch["current"],eval_batch["current"])
+        # Run the original experiment with all the passed parameters
+        #TODO: update the reference policy to be the one we trained previously
+        #TODO: also update the initialization policy
+        reference_result = ex.run(
+            config_updates={
+                "env_to_run": env_to_run,
+                "reward_fun": reward_fun,
+                "exp_algo": exp_algo,
+                "om_divergence_coeffs": om_divergence_coeffs_1,
+                "checkpoint_to_load_policies": checkpoint_to_load_policies,
+                "checkpoint_to_load_current_policy": checkpoint_to_load_current_policy,
+                "seed": seed,
+                "experiment_tag": experiment_tag,
+                "om_divergence_type": om_divergence_type,
+                "num_rollout_workers": num_rollout_workers,
+                "num_gpus": num_gpus,
+                "experiment_parts": experiment_parts,
+                "num_training_iters": num_training_iters,
+                "unique_id":unique_id
+            }
+        )
+        eval_batch_reference = reference_result.result[2]
 
-    # policy_batch = eval_batch.policy_batches["current"]
-    # # Split the batch into episodes
-    # episodes = policy_batch.split_by_episode()
-    # for i, episode in enumerate(episodes):
-    #     print ("episode[SampleBatch.ACTIONS].shape:")
-    #     print (episode[SampleBatch.ACTIONS].shape)
-    #     _log.info(f"\nTrajectory {i+1}:")
-        # for t in range(len(episode["obs"])):
-        #     _log.info(f"Step {t}:")
-        #     # _log.info(f"Observation: {episode['obs'][t]}")
-        #     _log.info(f"terminateds: {episode['terminateds'][t]}")
-        #     _log.info(f"truncateds: {episode['truncateds'][t]}")
-        #     _log.info("---")
-        # _log.info(f"Info: {episode['infos'][t]['original_reward']}")
+        over_opt_result = ex.run(
+            config_updates={
+                "env_to_run": env_to_run,
+                "reward_fun": reward_fun,
+                "exp_algo": exp_algo,
+                "om_divergence_coeffs": om_divergence_coeffs_2,
+                "checkpoint_to_load_policies": checkpoint_to_load_policies,
+                "checkpoint_to_load_current_policy": checkpoint_to_load_current_policy,
+                "seed": seed,
+                "experiment_tag": experiment_tag,
+                "om_divergence_type": om_divergence_type,
+                "num_rollout_workers": num_rollout_workers,
+                "num_gpus": num_gpus,
+                "experiment_parts": experiment_parts,
+                "num_training_iters": num_training_iters,
+                "unique_id":unique_id
+            }
+        )
 
-    #add collected trajectories to the reward model dataset and train it
+        
+        eval_batch_over_opt = over_opt_result.result[2]
+        
+        #TODO: our reward model might need to input a history of obs (possibly just last obs) instead of just the current obs
+        reward_model.update_params(eval_batch_over_opt["current"],eval_batch_reference["current"], iteration=i)
+
+        checkpoint_to_load_policies = reference_result.result[1]
+        checkpoint_to_load_current_policy = reference_result.result[1]
+
+        

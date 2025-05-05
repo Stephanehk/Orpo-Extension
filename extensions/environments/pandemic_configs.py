@@ -143,7 +143,7 @@ def get_pandemic_env_gt_rew():
     num_days_in_obs = 8
     use_safe_policy_actions = False
     reward_fun = "true"
-    safe_policy = "swedish_strategy"
+    safe_policy = "S0-4-0"
     env_config = {
         "sim_config": sim_config,
         "sim_opts": sim_opt,

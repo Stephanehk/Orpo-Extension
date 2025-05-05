@@ -570,9 +570,10 @@ def main(
     # rollouts = eval_results["evaluation"]["hist_stats"]["episode_reward"]
     # _log.info(f"Evaluation results: {eval_results}")
 
-    _log.info(f"WARNING: USING EXTRA SMALL TRAJECTORIES FOR DEBUGGING PURPOSES")
+    # _log.info(f"algorithm.config.train_batch_size: {algorithm.config.train_batch_size}")
+
     eval_batch = synchronous_parallel_sample(
-            worker_set=algorithm.workers, max_env_steps=algorithm.config.train_batch_size #worker_set=algorithm.workers, max_env_steps=algorithm.config.train_batch_size
+            worker_set=algorithm.workers, max_env_steps=algorithm.config.train_batch_size*4 #worker_set=algorithm.workers, max_env_steps=algorithm.config.train_batch_size
         )
     # eval_batch = eval_batch.as_multi_agent()
 
