@@ -46,7 +46,7 @@ def plot_rewards(run_path, save_path=None):
     true_rewards, proxy_rewards, steps = load_rewards_from_run(run_path)
     
     plt.figure(figsize=(10, 6))
-    # plt.plot(steps, true_rewards, label='True Reward', color='blue')
+    plt.plot(steps, true_rewards, label='True Reward', color='blue')
     plt.plot(steps, proxy_rewards, label='Proxy Reward', color='red')
     
     plt.xlabel('Training Steps')
@@ -66,9 +66,17 @@ if __name__ == "__main__":
     #bad regularization
     # run_path = "data/logs/pandemic/ORPO/proxy/model_128-128/state/weights_10.0_0.1_0.01/kl-0.06/seed_0/2025-04-29_09-51-02"
     #no regularization
-    run_path = "data/logs/pandemic/ORPO/proxy/model_128-128/weights_10.0_0.1_0.01//seed_0/2025-04-29_20-57-45/"
-    #training with true reward
-    # run_path="data/logs/pandemic/ORPO/true/model_128-128/state-action/weights_10.0_0.1_0.01//seed_0/2025-04-29_20-57-45/"
-
+    
+    #-----PANDEMIC-----
+    #contrained with regularization
+    # run_path = "data/logs/pandemic/2025-05-05_13-36-03/"  #"data/logs/pandemic/2025-05-05_21-18-28/"
+    #over-optimization (i.e., no regularization)
+    run_path = "data/logs/pandemic/ORPO/proxy/model_128-128/weights_10.0_0.1_0.01//seed_0/2025-05-05_21-29-00/" #"data/logs/pandemic/2025-05-06_06-41-21/"
+    #-----TOMATO WORLD-----
+    # contrained with regularization
+    # run_path = "data/logs/tomato/rhard/ORPO/proxy/model_512-512-512-512/state/kl-0.8/seed_0/2025-05-06_17-56-37/"
+    # over-optimization (i.e., no regularization)
+    # run_path = "data/logs/tomato/rhard/ORPO/proxy/model_512-512-512-512/seed_0/2025-05-06_15-48-27"
+    #2025-05-05_21-18-28/
     # Plot and save the rewards
     plot_rewards(run_path, save_path="rewards_plot.png") 

@@ -44,7 +44,7 @@ from occupancy_measures.experiments.traffic_experiments import create_traffic_co
 from occupancy_measures.envs.tomato_environment import create_simple_example,Tomato_Environment
 
 from extensions.reward_modeling.reward_wrapper import RewardWrapper,RewardModel
-import extensions.algorithms.unique_id_state as unique_id_state
+import extensions.algorithms.unique_id_state_2 as unique_id_state
 
 # from extensions.algorithms import iterative_reward_design
 

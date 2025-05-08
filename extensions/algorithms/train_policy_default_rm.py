@@ -59,16 +59,6 @@ sacred_settings.CONFIG.READ_ONLY_CONFIG = False
 
 faulthandler.register(signal.SIGUSR1)
 
-def create_env_pandemic(config):
-    base_env = PandemicPolicyGymEnv(config)
-    # Access unique_id from the config
-    return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_pandemic"), unique_id=unique_id_state.state["unique_id"])
-
-def create_env_tomato(config):
-    base_env = Tomato_Environment(config)
-    # Access unique_id from the config
-    return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=unique_id_state.state["unique_id"])
-
 # Make create_env a global variable that can be overridden
 # create_env = create_env
 @ex.config
@@ -83,8 +73,8 @@ def env_config():
 #     print ("(train_policy.py) UNIQUE ID (WHICH SHOULD BE THE SAME FOR ALL ITERATIONS):")
 #     print (unique_id_state.state["unique_id"])
 create_glucose_config(ex)
-create_pandemic_config(ex,use_custom_rm=True,custom_rm=create_env_pandemic)
-create_tomato_config(ex, use_custom_rm=True,custom_rm=create_env_tomato)
+create_pandemic_config(ex,use_custom_rm=False)
+create_tomato_config(ex, use_custom_rm=False)
 create_traffic_config(ex)
 
 EPS = 1e-9
@@ -603,7 +593,7 @@ def main(
     # eval_batch.policy_batches["current"] = concat_samples(
     #     postprocessed_episodes
     # )
-    _log.info(f"# of collected trajectories: {len(eval_batch)}")
+    # _log.info(f"Evaluation results: {train_batch}")
     #----------------------------------------------------
     algorithm.stop()
 

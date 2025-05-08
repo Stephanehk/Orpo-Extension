@@ -15,10 +15,10 @@ from occupancy_measures.agents.orpo import ORPO, ORPOPolicy
 from extensions.reward_modeling.reward_wrapper import RewardWrapper,RewardModel
 from pandemic_simulator.environment.pandemic_env import PandemicPolicyGymEnv
 
-from extensions.algorithms.train_policy import ex
+from extensions.algorithms.train_policy_2 import ex
 from extensions.environments.pandemic_configs import get_pandemic_env_gt_rew
-import extensions.algorithms.train_policy
-import extensions.algorithms.unique_id_state as unique_id_state
+import extensions.algorithms.train_policy_2
+import extensions.algorithms.unique_id_state_2 as unique_id_state
 import time
 
 import warnings
@@ -26,7 +26,7 @@ warnings.filterwarnings("ignore")
 
 
 # Create a new experiment for iterative reward design
-iterative_ex = Experiment("iterative_reward_design", save_git_info=False)
+iterative_ex = Experiment("iterative_reward_design_2", save_git_info=False)
 
 # def create_custom_env(config, reward_wrapper_class: Optional[Callable] = None, reward_net= None):
 #     """
