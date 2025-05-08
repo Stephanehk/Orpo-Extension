@@ -4,9 +4,9 @@
 #SBATCH --nodelist=next6
 #SBATCH --time=200:00:00
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=20
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=train_no_reg
+#SBATCH --job-name=train_ours
 #SBATCH --mem=64G
 
 ### Logging
@@ -15,4 +15,4 @@
 #SBATCH --mail-user=stephhk@stanford.edu # Email of notification
 #SBATCH --mail-type=END,FAIL,REQUEUE
 
-./train_no_reg.sh
+./train_ours.sh

@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=next
 #SBATCH --account=next
-#SBATCH --nodelist=next6
+#SBATCH --nodelist=next5
 #SBATCH --time=200:00:00
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=10
@@ -15,4 +15,4 @@
 #SBATCH --mail-user=stephhk@stanford.edu # Email of notification
 #SBATCH --mail-type=END,FAIL,REQUEUE
 
-./train_no_reg.sh
+./train_no_reg_safety_gw.sh
