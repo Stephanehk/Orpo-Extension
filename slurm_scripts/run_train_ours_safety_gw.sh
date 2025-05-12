@@ -12,7 +12,6 @@
 ### Logging
 #SBATCH --output=../run_logs/slurmjob_%j.out                    # Name of stdout output file (%j expands to jobId)
 #SBATCH --error=../run_logs/slurmjob_%j.err                        # Name of stderr output file (%j expands to jobId)
-#SBATCH --mail-user=stephhk@stanford.edu # Email of notification
 #SBATCH --mail-type=END,FAIL,REQUEUE
 
 ./train_ours_safety_gw.sh
