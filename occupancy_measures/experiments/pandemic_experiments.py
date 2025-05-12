@@ -77,9 +77,14 @@ def make_reg():
     return ps.sh.austin_regulations
 
 
-def create_pandemic_config(ex):
+def create_pandemic_config(ex,use_custom_rm=False, custom_rm=None):
+    ex.add_config({
+        'use_custom_rm': use_custom_rm,
+        'custom_rm': custom_rm
+    })
+
     @ex.config
-    def pandemic_config(env_to_run, _log):
+    def pandemic_config(env_to_run,use_custom_rm, custom_rm, _log):
         if env_to_run == "pandemic":
             # Environment
             horizon = 192
@@ -144,10 +149,19 @@ def create_pandemic_config(ex):
             )  # testing rate set based on contact tracing experiment from original code
 
             env_name = "pandemic_env_multiagent"
-            register_env(
-                env_name,
-                make_multi_agent(lambda config: PandemicPolicyGymEnv(config)),
-            )
+            # rm = custom_rm if use_custom_rm else None
+            if use_custom_rm:
+                assert custom_rm is not None
+                assert callable(custom_rm)
+                register_env(
+                    env_name,
+                    make_multi_agent(lambda config,custom_rm=custom_rm: custom_rm(config)),
+                )
+            else:
+                register_env(
+                    env_name,
+                    make_multi_agent(lambda config: PandemicPolicyGymEnv(config)),
+                )
             reward_fun = "true"
             assert reward_fun in ["true", "proxy"]
             use_safe_policy_actions = False

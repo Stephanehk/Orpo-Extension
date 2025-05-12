@@ -4,6 +4,7 @@
 #SBATCH --nodelist=next5
 #SBATCH --time=200:00:00
 #SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=20
 #SBATCH --gres=gpu:1
 #SBATCH --job-name=train_good_reg
 #SBATCH --mem=64G

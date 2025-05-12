@@ -1,2 +1,22 @@
+# Byte-compiled / optimized / DLL files
 __pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment directories
+venv/
+env/
 .venv/
+.ENV/
+
+# pipenv files
+Pipfile.lock
+
+# pyenv
+.python-version
+
+# VS Code settings (optional)
+.vscode/
+
+# Jupyter Notebook checkpoints (optional)
+.ipynb_checkpoints/

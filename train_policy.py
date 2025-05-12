@@ -1,112 +1,20 @@
 import argparse
 import logging
-from typing import Dict, List, Optional, Type, Union
+from typing import Dict, Optional
 
-import numpy as np
 import ray
-import torch
-import torch.nn as nn
-from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.algorithms.ppo import PPO, PPOConfig
 from ray.rllib.env.multi_agent_env import make_multi_agent
-from ray.rllib.models.torch.torch_action_dist import TorchDistributionWrapper
-from ray.rllib.policy.policy import Policy
-from ray.rllib.policy.sample_batch import SampleBatch
-from ray.rllib.utils.typing import TensorType
-from ray.tune.registry import register_env, register_trainable
+from ray.tune.registry import register_env
 from pandemic_simulator.environment.pandemic_env import PandemicPolicyGymEnv
-from ray.rllib.core.rl_module.rl_module import RLModule
-from ray.rllib.core.rl_module.torch.torch_rl_module import TorchRLModule
-from ray.rllib.models.specs.specs_dict import SpecDict
-from ray.rllib.models.specs.specs_torch import TorchTensorSpec
 from sacred import Experiment
 from sacred import SETTINGS as sacred_settings
 
-# Custom reward model that you can modify
-class CustomRewardModule(TorchRLModule):
-    def __init__(self, config):
-        super().__init__(config)
-        self.reward_net = nn.Sequential(
-            nn.Linear(config.observation_space.shape[0] + config.action_space.shape[0], 256),
-            nn.ReLU(),
-            nn.Linear(256, 256),
-            nn.ReLU(),
-            nn.Linear(256, 1)
-        )
-        
-    def _forward_inference(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        obs = batch[SampleBatch.OBS]
-        actions = batch[SampleBatch.ACTIONS]
-        reward = self.reward_net(torch.cat([obs, actions], dim=1))
-        return {SampleBatch.REWARDS: reward}
+from reward_wrapper import RewardWrapper
 
-    def _forward_exploration(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        return self._forward_inference(batch)
-
-    def _forward_train(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        return self._forward_inference(batch)
-
-    def get_input_specs(self) -> SpecDict:
-        return {
-            SampleBatch.OBS: TorchTensorSpec("b, h", h=self.config.observation_space.shape[0]),
-            SampleBatch.ACTIONS: TorchTensorSpec("b, a", a=self.config.action_space.shape[0]),
-        }
-
-    def get_output_specs(self) -> SpecDict:
-        return {
-            SampleBatch.REWARDS: TorchTensorSpec("b, 1"),
-        }
-
-# Pandemic reward model that implements the proxy reward function
-class PandemicRewardModule(TorchRLModule):
-    def __init__(self, config):
-        super().__init__(config)
-        
-        # Extract observation components
-        self.critical_infection_idx = 0  # Index of critical infection count in observation
-        self.stage_idx = 1  # Index of current stage in observation
-        self.prev_stage_idx = 2  # Index of previous stage in observation
-        
-        # Reward weights for different components
-        self.infection_weight = 10.0  # Weight for critical infection count
-        self.political_weight = 0.0  # Weight for political component (0 in proxy reward)
-        self.stage_weight = 0.1  # Weight for lower stage preference
-        self.smooth_weight = 0.01  # Weight for smooth stage changes
-        
-    def _forward_inference(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        obs = batch[SampleBatch.OBS]
-        
-        # Extract components from observation
-        critical_infections = obs[:, self.critical_infection_idx]
-        current_stage = obs[:, self.stage_idx]
-        prev_stage = obs[:, self.prev_stage_idx]
-        
-        # Calculate reward components
-        infection_reward = -self.infection_weight * critical_infections
-        political_reward = torch.zeros_like(infection_reward)  # 0 in proxy reward
-        stage_reward = -self.stage_weight * current_stage
-        smooth_reward = -self.smooth_weight * torch.abs(current_stage - prev_stage)
-        
-        # Combine rewards
-        total_reward = infection_reward + political_reward + stage_reward + smooth_reward
-        
-        return {SampleBatch.REWARDS: total_reward.unsqueeze(-1)}
-
-    def _forward_exploration(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        return self._forward_inference(batch)
-
-    def _forward_train(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        return self._forward_inference(batch)
-
-    def get_input_specs(self) -> SpecDict:
-        return {
-            SampleBatch.OBS: TorchTensorSpec("b, h", h=self.config.observation_space.shape[0]),
-        }
-
-    def get_output_specs(self) -> SpecDict:
-        return {
-            SampleBatch.REWARDS: TorchTensorSpec("b, 1"),
-        }
+def create_env(config):
+    base_env = PandemicPolicyGymEnv(config)
+    return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom"))
 
 def train_policy(
     env_to_run: str,
@@ -129,7 +37,7 @@ def train_policy(
     num_training_iterations: int = 1000,
     checkpoint_freq: int = 10,
     checkpoint_at_end: bool = True,
-    reward_model: str = "custom",  # Add reward model selection
+    reward_model: str = "custom",
 ):
     """
     Train a policy with the specified parameters and reward function.
@@ -162,29 +70,18 @@ def train_policy(
 
     ex = Experiment("orpo_experiments", save_git_info=False)
     sacred_settings.CONFIG.READ_ONLY_CONFIG = False
-
-    # Select reward model
-    if reward_model == "pandemic":
-        model_class = PandemicRewardModule
-    else:
-        model_class = CustomRewardModule
     
     # Set up environment configuration
     if env_to_run == "pandemic":
         # Import pandemic configuration
-        from occupancy_measures.experiments.pandemic_experiments import create_pandemic_config
         from extensions.utils.custom_configs import pandemic_configs
-        # Create pandemic configuration
-        # ex = create_pandemic_config(ex)
-        
-        # env_config = ex.configurations[0].config["env_config"]
         env_config = pandemic_configs()
         
         # Update environment name
         env_name = "pandemic_env_multiagent"
         register_env(
             env_name,
-            make_multi_agent(lambda config: PandemicPolicyGymEnv(config)),
+            make_multi_agent(lambda config: create_env(config)),
         )
     else:
         raise NotImplementedError(f"Environment {env_to_run} is not implemented yet")
@@ -208,14 +105,12 @@ def train_policy(
         entropy_coeff=entropy_coeff,
         clip_param=clip_param,
         lambda_=lambda_,
-    ).rl_module(
-        _enable_rl_module_api=True,
-        rl_module_spec={
-            "module_class": model_class,
-        }
     ).resources(
         num_gpus=num_gpus,
     )
+    
+    # Add reward model to env config
+    config.env_config["reward_model"] = reward_model
     
     # Create the algorithm
     algo = PPO(config=config)
