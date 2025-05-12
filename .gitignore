@@ -20,3 +20,6 @@ Pipfile.lock
 
 # Jupyter Notebook checkpoints (optional)
 .ipynb_checkpoints/
+
+# Logs
+run_logs/
