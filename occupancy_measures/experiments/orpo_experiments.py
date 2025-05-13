@@ -41,6 +41,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 ex = Experiment("orpo_experiments", save_git_info=False)
 sacred_settings.CONFIG.READ_ONLY_CONFIG = False
 
+
 faulthandler.register(signal.SIGUSR1)
 
 
@@ -67,7 +68,7 @@ def common_config(  # noqa: C901
     num_training_iters,
     experiment_parts,
     _log,
-):  
+):
     num_cpus = available_cpu_count()  # noqa: F841
 
     exp_algo = "PPO"
@@ -461,7 +462,6 @@ def common_config(  # noqa: C901
 
     elif exp_algo == "SafePolicyGenerationAlgorithm":
         AlgorithmClass = SafePolicyGenerationAlgorithm  # noqa: F841
-
         restore_default_params(config, env_to_run)
         for config_key in list(config.keys()):
             if config_key not in SafePolicyGenerationAlgorithm.get_default_config():
@@ -469,7 +469,7 @@ def common_config(  # noqa: C901
                 if config_key == "lambda":
                     config_key = "lambda_"
                 delattr(config, config_key)
-        
+
         config.env_config["use_safe_policy_actions"] = True
         use_learned_reward = False
         if use_learned_reward:
@@ -716,7 +716,6 @@ def main(
     num_cpus: int,
     _log: Logger,
 ):
-   
     temp_dir = tempfile.mkdtemp()
     os.environ["RAY_AIR_NEW_PERSISTENCE_MODE"] = "0"
     ray.init(

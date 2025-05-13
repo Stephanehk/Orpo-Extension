@@ -76,7 +76,6 @@ def make_cfg(delta_hi, delta_lo, num_persons=500):
 def make_reg():
     return ps.sh.austin_regulations
 
-
 def create_pandemic_config(ex,use_custom_rm=False, custom_rm=None):
     ex.add_config({
         'use_custom_rm': use_custom_rm,
@@ -165,7 +164,7 @@ def create_pandemic_config(ex,use_custom_rm=False, custom_rm=None):
             reward_fun = "true"
             assert reward_fun in ["true", "proxy"]
             use_safe_policy_actions = False
-            safe_policy = "swedish_strategy"
+            safe_policy = "S0-4-0"
             safe_policies = [
                 "S0",
                 "S1",

@@ -4,24 +4,31 @@ import numpy as np
 import torch
 from ray.rllib.algorithms.algorithm_config import AlgorithmConfig
 from ray.rllib.utils.typing import AlgorithmConfigDict
+from ray.tune.registry import register_env
+from ray.rllib.env.multi_agent_env import make_multi_agent
 
 from occupancy_measures.models.model_with_discriminator import (
     ModelWithDiscriminatorConfig,
 )
 
 from ..envs.tomato_callbacks import TomatoCallbacks
-from ..envs.tomato_environment import create_simple_example
+from ..envs.tomato_environment import create_simple_example,Tomato_Environment
 
 
-def create_tomato_config(ex):
+def create_tomato_config(ex,use_custom_rm=False, custom_rm=None):
+    ex.add_config({
+        'use_custom_rm': use_custom_rm,
+        'custom_rm': custom_rm
+    })
     @ex.config
-    def tomato_config(env_to_run, experiment_parts, _log):
+    def tomato_config(env_to_run, experiment_parts,use_custom_rm, custom_rm, _log):
         if env_to_run == "tomato":
             # Environment
             env_name = "tomato_env"
-            level = 2
+            level = 4
             filepath, diff = create_simple_example("data/", level)
             experiment_parts.append(diff)
+            
             horizon = 100
             reward_fun = "true"
             dry_distance = 3
@@ -75,7 +82,6 @@ def create_tomato_config(ex):
             kl_target = 0.001
             clip_param = 0.05
             num_sgd_iter = 8
-
             # model
             width = 512
             depth = 4
@@ -123,3 +129,18 @@ def create_tomato_config(ex):
                 "seed": seed,
             }
             config.update_from_dict(config_updates)
+
+            if use_custom_rm:
+                assert custom_rm is not None
+                assert callable(custom_rm)
+                register_env(
+                    "tomato_env",
+                    lambda config,custom_rm=custom_rm: custom_rm(config)),
+                
+                register_env(
+                    "tomato_env_multiagent",
+                    make_multi_agent(lambda config,custom_rm=custom_rm: custom_rm(config)),
+                )
+            else:
+                register_env("tomato_env", lambda config: Tomato_Environment(config))
+                register_env("tomato_env_multiagent", make_multi_agent(lambda config: Tomato_Environment(config)))

@@ -1,5 +1,6 @@
 import os
 from collections import OrderedDict
+import time
 
 import gymnasium as gym
 import matplotlib.patches as mpatches
@@ -89,8 +90,16 @@ class Tomato_Environment(gym.Env):
             os.makedirs(self.rendering_filepath)
 
     def reset(self, *, seed=None, options=None):
-        file = open(self.filepath, "rb")
-        self.board = np.load(file)
+        # file = open(self.filepath, "rb")
+        # self.board = np.load(file)
+        # try:
+        with open(self.filepath, "rb") as file:
+            self.board = np.load(file)
+        # except EOFError:
+        #     time.sleep(5)
+        #     with open(self.filepath, "rb") as file:
+        #         self.board = np.load(file)
+
         self.board_size = self.board.shape[0]  # assuming a square board
 
         # find tomatoes
@@ -212,6 +221,7 @@ class Tomato_Environment(gym.Env):
         return str_board
 
     def step(self, action):
+        self._last_observation = self.get_obs()
         if (
             self.randomness_eps is not None
             and np.random.uniform(0, 1) <= self.randomness_eps
@@ -298,7 +308,7 @@ class Tomato_Environment(gym.Env):
         return len(self.watered) * self.reward_factor
 
 
-def create_simple_example(filepath, level=0):
+def create_simple_example(filepath, level=4):
     configs_path = os.path.join(filepath, "saved_configs")
     if not os.path.exists(configs_path):
         os.makedirs(configs_path)
@@ -376,7 +386,7 @@ def create_simple_example(filepath, level=0):
         diff = "rhard"
     else:
         return
-
+    assert level == 4
     np.save(filename, board)
     return filename, diff
 
