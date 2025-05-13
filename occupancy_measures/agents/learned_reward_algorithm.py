@@ -237,6 +237,16 @@ class LearnedRewardPolicy(TorchPolicy):
         )
         return probs
 
+    def _calculate_discounted_sum_and_diffs(self, traj1_rews, traj2_rews,gamma=0.99):
+        discounts = gamma ** torch.arange(
+            len(traj1_rews), device=traj1_rews.device
+        )
+        rewards_diff = (discounts * (traj2_rews - traj1_rews)).sum(axis=0)
+        # return torch.clip(
+        #     rewards_diff, -self.config["rew_clip"], self.config["rew_clip"]
+        # )
+        return rewards_diff
+
     """
     Compares two trajectories based on their true rewards using the calculated
     softmax probabilities

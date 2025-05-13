@@ -1176,6 +1176,8 @@ class ORPO(PPO):
         # Train policy
         train_results: ResultDict
         current_policy_batch = {}
+        # print ("self.config.current_policy_id :", self.config.current_policy_id)
+        # print ("train_batch.policy_batches :", train_batch.policy_batches)
         if self.config.current_policy_id in train_batch.policy_batches:
             current_policy_batch[self.config.current_policy_id] = (
                 train_batch.policy_batches[self.config.current_policy_id]
