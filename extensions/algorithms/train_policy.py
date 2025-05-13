@@ -83,8 +83,9 @@ def env_config():
 #     print ("(train_policy.py) UNIQUE ID (WHICH SHOULD BE THE SAME FOR ALL ITERATIONS):")
 #     print (unique_id_state.state["unique_id"])
 create_glucose_config(ex)
-create_pandemic_config(ex,use_custom_rm=True,custom_rm=create_env_pandemic)
-create_tomato_config(ex, use_custom_rm=True,custom_rm=create_env_tomato)
+create_pandemic_config(ex, use_custom_rm=True, custom_rm=create_env_pandemic)
+create_tomato_config(ex, use_custom_rm=True, custom_rm=create_env_tomato)
+create_tomato_config(ex)
 create_traffic_config(ex)
 
 EPS = 1e-9

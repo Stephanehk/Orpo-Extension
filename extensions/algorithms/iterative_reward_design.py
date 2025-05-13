@@ -69,7 +69,6 @@ def config():
 
 # @iterative_ex.automain
 @iterative_ex.automain
-
 def main(
     env_to_run,
     level,
@@ -93,7 +92,9 @@ def main(
     """
     Main function that runs the training with a configurable reward wrapper.
     """
+    print("hello world!")
 
+    
     # unique_id_state.state["unique_id"] = f"{reward_fun}_{seed}_{int(time.time())}"
 
     #all these args must be manual set per environment (annoying but we can't init gym env here) 

@@ -3,3 +3,10 @@ If you have time over the next few days, can you look into testing the following
 the proxy and true reward functions rank trajectories sampled from the Swedish reference policy in the same way
 
 hello world!
+
+# Environment
+
+```
+conda activate orpo
+```
+NOTE: Ignore the venv

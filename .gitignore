@@ -23,3 +23,6 @@ Pipfile.lock
 
 # Logs
 run_logs/
+
+# Misc
+orpo.egg-info/
