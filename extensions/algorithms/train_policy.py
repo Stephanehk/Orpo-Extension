@@ -1,3 +1,4 @@
+import sys
 import faulthandler
 import os
 import signal
@@ -44,7 +45,7 @@ from occupancy_measures.experiments.traffic_experiments import create_traffic_co
 from occupancy_measures.envs.tomato_environment import create_simple_example,Tomato_Environment
 
 from extensions.reward_modeling.reward_wrapper import RewardWrapper,RewardModel
-import extensions.algorithms.unique_id_state as unique_id_state
+# import extensions.algorithms.unique_id_state as unique_id_state
 
 # from extensions.algorithms import iterative_reward_design
 
@@ -62,12 +63,16 @@ faulthandler.register(signal.SIGUSR1)
 def create_env_pandemic(config):
     base_env = PandemicPolicyGymEnv(config)
     # Access unique_id from the config
-    return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_pandemic"), unique_id=unique_id_state.state["unique_id"])
+    config.unique_id = 1  # TODO: remove debugging
+    # return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_pandemic"), unique_id=unique_id_state.state["unique_id"])
+    return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=config.unique_id)
 
 def create_env_tomato(config):
     base_env = Tomato_Environment(config)
     # Access unique_id from the config
-    return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=unique_id_state.state["unique_id"])
+    config.unique_id = 1
+    return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=config.unique_id)
+    # return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=unique_id_state.state["unique_id"])
 
 # Make create_env a global variable that can be overridden
 # create_env = create_env
@@ -75,6 +80,7 @@ def create_env_tomato(config):
 def env_config():
     env_to_run = "tomato"  # noqa: F841
     experiment_parts = [env_to_run]  # noqa: F841
+
 
 #this is so frustrating; wth is sacred doing (!!)
 # if not unique_id_state.state["set"]:
@@ -85,7 +91,6 @@ def env_config():
 create_glucose_config(ex)
 create_pandemic_config(ex, use_custom_rm=True, custom_rm=create_env_pandemic)
 create_tomato_config(ex, use_custom_rm=True, custom_rm=create_env_tomato)
-create_tomato_config(ex)
 create_traffic_config(ex)
 
 EPS = 1e-9
@@ -97,13 +102,14 @@ def common_config(  # noqa: C901
     env_config,
     num_training_iters,
     experiment_parts,
+    unique_id,
     _log,
 ):  
     num_cpus = available_cpu_count()  # noqa: F841
 
     # Add unique_id to config if not already present
-    if not hasattr(config, 'unique_id'):
-        config.unique_id = f"{config.env_config['reward_fun']}_{config.seed}_{int(time.time())}"
+    # if not hasattr(config, 'unique_id'):
+    #     config.unique_id = f"{config.env_config['reward_fun']}_{config.seed}_{int(time.time())}"
 
     exp_algo = "PPO"
     assert exp_algo in [
@@ -502,8 +508,11 @@ def create_multiagent(
     return policies, policy_mapping_fn, policies_to_train
 
 
-@ex.automain
+
+# @ex.automain
+@ex.main
 def main(
+    unique_id,
     config,
     log_dir,
     ray_init_kwargs,
@@ -520,7 +529,7 @@ def main(
     num_cpus: int,
     _log: Logger,
 ):
-   
+    print(f"TRAIN: {unique_id=}", file=sys.stderr)
     temp_dir = tempfile.mkdtemp()
     os.environ["RAY_AIR_NEW_PERSISTENCE_MODE"] = "0"
     ray.init(

@@ -1,4 +1,0 @@
-
-CondaError: Run 'conda init' before 'conda activate'
-
-slurmstepd: error: *** JOB 10271267 ON next5 CANCELLED AT 2025-04-28T14:18:15 ***

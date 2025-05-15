@@ -26,3 +26,5 @@ run_logs/
 
 # Misc
 orpo.egg-info/
+active_models/
+data/

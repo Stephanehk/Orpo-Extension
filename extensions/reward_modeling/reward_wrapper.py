@@ -64,7 +64,7 @@ class RewardModel(nn.Module):
         self.n_prefs_per_update=n_prefs_per_update
 
 
-        print ("Create rm with unique_id:", self.unique_id)
+        print("Create rm with unique_id:", self.unique_id)
 
         #initialize Adam optimizer
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr,weight_decay=1e-5)
@@ -86,7 +86,8 @@ class RewardModel(nn.Module):
         # except FileNotFoundError:
         # torch.save(self.state_dict(), f"active_models/reward_model_{self.unique_id}.pth")
         #delay for 1 second to ensure the file is created
-        time.sleep(1)
+        # time.sleep(1)
+
     def save_params(self):
         torch.save(self.state_dict(), f"active_models/reward_model_{self.unique_id}.pth")
 
@@ -101,18 +102,20 @@ class RewardModel(nn.Module):
             x = torch.relu(self.fc1(x))
             x = torch.relu(self.fc2(x))
             x = self.fc3(x)
-        # print ("forward output:")
-        # print (x)
+        # print("forward output:")
+        # print(x)
         return x
 
     def load_params(self, map_to_cpu=False):
-        if self.unique_id is None:
-            raise ValueError("unique_id must be set to load parameters")
-        #load in state dict
-        if map_to_cpu:
-            self.load_state_dict(torch.load(f"active_models/reward_model_{self.unique_id}.pth", map_location=torch.device('cpu')))
-        else:
-            self.load_state_dict(torch.load(f"active_models/reward_model_{self.unique_id}.pth"))
+        if os.path.exists(f"active_models/reward_model_{self.unique_id}.pth"):
+            if self.unique_id is None:
+                raise ValueError("unique_id must be set to load parameters")
+            #load in state dict
+            if map_to_cpu:
+                self.load_state_dict(torch.load(f"active_models/reward_model_{self.unique_id}.pth", map_location=torch.device('cpu')))
+            else:
+                self.load_state_dict(torch.load(f"active_models/reward_model_{self.unique_id}.pth"))
+        
         self.train()
 
 
@@ -220,7 +223,7 @@ class RewardModel(nn.Module):
         traj1_preds = self.forward(net_input1).flatten()#TODO: need to figure out how to add initial reward values to these estimates
         traj2_preds = self.forward(net_input2).flatten()
 
-        # print ("pred reward add ons:", (traj1_preds, traj2_preds))
+        # print("pred reward add ons:", (traj1_preds, traj2_preds))
 
         #add original proxy reward to the predicted reward
         combined_traj1_preds = traj1_preds + traj1["proxy_rewards"].flatten().to(self.device)
@@ -291,11 +294,11 @@ class RewardModel(nn.Module):
                 time_major=False,
             )
         
-        print ("Proxy reward seq:")
-        print (proxy_reward_seq)
-        print ("Reward seq for prefs:")
-        print (modified_reward_seq)
-        print ("==========================")
+        print("Proxy reward seq:")
+        print(proxy_reward_seq)
+        print("Reward seq for prefs:")
+        print(modified_reward_seq)
+        print("==========================")
         #the first element of these sequences is blank (i.e., initial obs, but same as the obs at the first time-step), so we need to remove it
        
         rewards_sequences = rewards_sequences[:,1:]
@@ -315,30 +318,30 @@ class RewardModel(nn.Module):
         batch_seq_lens = [self.sequence_lens for _ in range(int(len(train_batch1)/self.sequence_lens))]
         batch_seq_lens = torch.tensor(batch_seq_lens)
         num_sequences = len(batch_seq_lens)
-        print ("num_sequences:", num_sequences)
+        print("num_sequences:", num_sequences)
 
-        # print (len(train_batch1))
-        # print (train_batch1["obs"])
-        # print (train_batch1["actions"].shape)
-        # print (train_batch1["terminateds"])
-        # print ("\n")
-        # print (train_batch1["truncateds"])
+        # print(len(train_batch1))
+        # print(train_batch1["obs"])
+        # print(train_batch1["actions"].shape)
+        # print(train_batch1["terminateds"])
+        # print("\n")
+        # print(train_batch1["truncateds"])
         
         # bools = train_batch1["terminateds"]
         # debug = [j - i - 1 for i, j in zip(
         #         [i for i, x in enumerate(bools) if x],
         #         [j for j, x in enumerate(bools) if x][1:]
         #     )]
-        # print ("debug:", debug)
+        # print("debug:", debug)
 
         rewards_sequences1,acs_sequences1,obs_sequences1,new_obs_sequences1, reward_sequences_for_prefs1, proxy_reward_seq1 = self.get_batch_sequences(train_batch1,batch_seq_lens)
         rewards_sequences2,acs_sequences2,obs_sequences2,new_obs_sequences2, reward_sequences_for_prefs2, proxy_reward_seq2 = self.get_batch_sequences(train_batch2,batch_seq_lens)
        
         trajectory_pairs = [(i, j) for i in range(num_sequences-1) for j in range(num_sequences-1)]
-        # print ("# of trajectory pairs 2 add:", len(trajectory_pairs))
-        # print (len(train_batch1))
-        # print (len(train_batch2))
-        # print ("num_sequences:", num_sequences)
+        # print("# of trajectory pairs 2 add:", len(trajectory_pairs))
+        # print(len(train_batch1))
+        # print(len(train_batch2))
+        # print("num_sequences:", num_sequences)
         #randomly sample n_prefs_per_update pairs of trajectories
         if self.n_prefs_per_update is not None:
             selected_is = np.random.choice(list(range(len(trajectory_pairs))), size=self.n_prefs_per_update, replace=False)
@@ -362,12 +365,12 @@ class RewardModel(nn.Module):
                 proxy_reward_seq2,
                 indices_pair[1],
             )
-            print (proxy_reward_seq1)
-            print (reward_sequences_for_prefs1)
-            print ("\n")
-            print (proxy_reward_seq2)
-            print (reward_sequences_for_prefs2)
-            print ("==============")
+            print(proxy_reward_seq1)
+            print(reward_sequences_for_prefs1)
+            print("\n")
+            print(proxy_reward_seq2)
+            print(reward_sequences_for_prefs2)
+            print("==============")
 
             true_reward_label = self._calculate_true_reward_comparisons(traj1, traj2).to(self.device)
             self.replay_buffer.push(traj1, traj2, true_reward_label)
@@ -403,15 +406,15 @@ class RewardModel(nn.Module):
                 loss = torch.nn.functional.binary_cross_entropy(
                     predicted_reward_probs, true_label
                 )
-                # print ("   ",loss)
+                # print("   ",loss)
 
                 reward_model_loss += loss
             reward_model_loss /= len(self.replay_buffer.buffer)
             
             self.optimizer.zero_grad()
             reward_model_loss.backward()
-            print ("reward model loss:")
-            print (reward_model_loss)
+            print("reward model loss:")
+            print(reward_model_loss)
             all_losses.append(reward_model_loss.item())
             self.optimizer.step()
             self.scheduler.step()
@@ -460,11 +463,11 @@ class RewardWrapper(Wrapper):
                 env_name="tomato",
                 unique_id=unique_id
             )
-            # print ("device: ", self.reward_net.device)
+            # print("device: ", self.reward_net.device)
             self.reward_net.load_params(map_to_cpu=True)
             self.reward_net.eval()
 
-        self.timestamp = os.path.getmtime(self.reward_net.get_fp())
+        # self.timestamp = os.path.getmtime(self.reward_net.get_fp())  # NOTE: LMB commented out
 
       
     def _get_concatenated_obs_action(self, obs, new_obs, actions):
@@ -489,10 +492,10 @@ class RewardWrapper(Wrapper):
         if "custom" in self.reward_model:
             #this is so janky <- we need to figure out a better way to do this
             # self.reward_net.load_params(map_to_cpu=True)
-            if os.path.getmtime(self.reward_net.get_fp()) != self.timestamp:
-                self.reward_net.load_params(map_to_cpu=True)
-                self.timestamp = os.path.getmtime(self.reward_net.get_fp())
-                print ("Reloading reward model parameters")
+            # if os.path.getmtime(self.reward_net.get_fp()) != self.timestamp:  # NOTE: LMB commented out
+            #     self.reward_net.load_params(map_to_cpu=True)
+            #     self.timestamp = os.path.getmtime(self.reward_net.get_fp())
+            #     print("Reloading reward model parameters")
             # Convert to tensors
             #check if obs is an OrderedDict
             obs_in=obs
@@ -507,23 +510,23 @@ class RewardWrapper(Wrapper):
             obs_tensor = torch.from_numpy(obs_in).float().unsqueeze(0)
             last_obs_tensor = torch.from_numpy(las_obs_in).float().unsqueeze(0)
             action_tensor = torch.tensor([action]).float()
-            # print (obs_tensor.shape)
-            # print (last_obs_tensor.shape)
-            # print (action_tensor.shape)
+            # print(obs_tensor.shape)
+            # print(last_obs_tensor.shape)
+            # print(action_tensor.shape)
             # Concatenate and compute reward
             net_input = self._get_concatenated_obs_action(obs_tensor.flatten(1),last_obs_tensor.flatten(1),action_tensor).to(self.reward_net.device)
             reward = self.reward_net(net_input).squeeze().item() + original_reward
             info["modified_reward"] = reward
 
-            print ("original_reward:", original_reward)
-            print ("modified reward:", reward)
-            print ("\n")
+            print("original_reward:", original_reward)
+            print("modified reward:", reward)
+            print("\n")
         else:
             reward = original_reward
         
         # Store original reward in info for reference
         info["original_reward"] = original_reward
-        # print ("overwriting reward...")
+        # print("overwriting reward...")
         
         return obs, reward, terminated, truncated, info
 

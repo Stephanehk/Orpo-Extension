@@ -1,4 +1,0 @@
-
-CondaError: Run 'conda init' before 'conda activate'
-
-/next/u/stephhk/miniconda3/envs/myenv/bin/python: Error while finding module specification for 'occupancy_measures.experiments.orpo_experiments' (ModuleNotFoundError: No module named 'occupancy_measures')

@@ -1,3 +1,4 @@
+import sys
 import os
 from typing import Callable, Optional, List, Union
 import ray
@@ -17,9 +18,14 @@ from pandemic_simulator.environment.pandemic_env import PandemicPolicyGymEnv
 
 from extensions.algorithms.train_policy import ex
 from extensions.environments.pandemic_configs import get_pandemic_env_gt_rew
-import extensions.algorithms.train_policy
-import extensions.algorithms.unique_id_state as unique_id_state
+# import extensions.algorithms.train_policy
+# import extensions.algorithms.unique_id_state as unique_id_state
 import time
+
+
+# NOTE: added by LMB (maybe remove)
+from datetime import datetime
+import uuid
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -37,8 +43,8 @@ iterative_ex = Experiment("iterative_reward_design", save_git_info=False)
 #         reward_wrapper_class: Optional custom reward wrapper class to use instead of RewardWrapper
 #     """
 #     base_env = PandemicPolicyGymEnv(config)
-#     print (base_env.observation_space.shape[0])
-#     print (base_env.action_space.shape[0])
+#     print(base_env.observation_space.shape[0])
+#     print(base_env.action_space.shape[0])
 #     wrapper_class = reward_wrapper_class if reward_wrapper_class is not None else RewardWrapper
 #     #pass in reward_net as an input to the wrapper class
 #     return wrapper_class(base_env, reward_model=config.get("reward_model", "default"), reward_net=reward_net)
@@ -67,6 +73,10 @@ def config():
     # num_rollouts = 10  # Number of rollouts to collect
     # rollout_length = 192  # Length of each rollout
 
+    # NOTE: added by LMB
+    unique_id = f"{seed}_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}_{uuid.uuid4().hex[:2]}"
+
+
 # @iterative_ex.automain
 @iterative_ex.automain
 def main(
@@ -87,14 +97,12 @@ def main(
     reward_wrapper_class,
     num_training_iters_1,
     num_training_iters_2,
+    unique_id,
     _log
 ):
     """
     Main function that runs the training with a configurable reward wrapper.
-    """
-    print("hello world!")
-
-    
+    """    
     # unique_id_state.state["unique_id"] = f"{reward_fun}_{seed}_{int(time.time())}"
 
     #all these args must be manual set per environment (annoying but we can't init gym env here) 
@@ -105,7 +113,8 @@ def main(
             sequence_lens=193,
             discrete_actions = True,
             env_name="pandemic",
-            unique_id=unique_id_state.state["unique_id"]
+            # unique_id=unique_id_state.state["unique_id"]
+            unique_id=unique_id
         )    
     elif "tomato" in env_to_run:
         reward_model = RewardModel(
@@ -114,7 +123,8 @@ def main(
             sequence_lens=100,
             discrete_actions = True,
             env_name="tomato",
-            unique_id=unique_id_state.state["unique_id"]
+            # unique_id=unique_id_state.state["unique_id"]
+            unique_id=unique_id
         )
     else:
         raise ValueError("Unsupported environment type")
@@ -122,12 +132,13 @@ def main(
     reward_model.save_params()
     
     for i in range(10):
-        print ("(iterative_reward_design.py) UNIQUE ID (WHICH SHOULD BE THE SAME FOR ALL ITERATIONS):")
-        print (unique_id_state.state["unique_id"])
-        print ("======================")
-        print ("checkpoint_to_load_current_policy", checkpoint_to_load_current_policy)
-        print ("checkpoint_to_load_policies", checkpoint_to_load_policies)
-        print ("======================")
+        print("(iterative_reward_design.py) UNIQUE ID (WHICH SHOULD BE THE SAME FOR ALL ITERATIONS):")
+        # print(unique_id_state.state["unique_id"])
+        print(f"IRD: {unique_id=}")
+        print("======================")
+        print("checkpoint_to_load_current_policy", checkpoint_to_load_current_policy)
+        print("checkpoint_to_load_policies", checkpoint_to_load_policies)
+        print("======================")
         # if i == 0:
         # if (int(om_divergence_coeffs_1[0]) == 0 and i == 0) or int(om_divergence_coeffs_1[0]) != 0:
 
@@ -155,9 +166,11 @@ def main(
                 "num_rollout_workers": num_rollout_workers,
                 "num_gpus": num_gpus,
                 "experiment_parts": experiment_parts,
-                "num_training_iters": num_training_iters_1,      
+                "num_training_iters": num_training_iters_1,
+                "unique_id": unique_id
             }
         )
+        print(f"{reference_result.config}", file=sys.stderr)
         eval_batch_reference = reference_result.result[2]
 
         #TODO: remember to delete after debugging
@@ -185,6 +198,7 @@ def main(
                 "num_gpus": num_gpus,
                 "experiment_parts": experiment_parts,
                 "num_training_iters": num_training_iters_2,
+                "unique_id": unique_id
             }
         )
 
@@ -197,13 +211,13 @@ def main(
         checkpoint_to_load_policies = ["/next/u/stephhk/orpo/"+reference_result.result[1]]
         # checkpoint_to_load_current_policy = "/next/u/stephhk/orpo/"+reference_result.result[1]
 
-        print (checkpoint_to_load_policies)
-        print (checkpoint_to_load_current_policy)
+        print(checkpoint_to_load_policies)
+        print(checkpoint_to_load_current_policy)
 
-        print ("======================")
-        print ("saving over opt checkpoint to:", over_opt_result.result[1])
-        print ("saving reference checkpoint to:", reference_result.result[1])
-        print ("======================")
+        print("======================")
+        print("saving over opt checkpoint to:", over_opt_result.result[1])
+        print("saving reference checkpoint to:", reference_result.result[1])
+        print("======================")
 
         time.sleep(5)
 
