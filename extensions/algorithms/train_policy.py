@@ -60,42 +60,51 @@ sacred_settings.CONFIG.READ_ONLY_CONFIG = False
 
 faulthandler.register(signal.SIGUSR1)
 
+# def create_env_pandemic(
+#         config, 
+#         # unique_id
+#     ):
+#     # print(f"PANDEMIC CREATION: {unique_id=}", file=sys.stderr)
+#     base_env = PandemicPolicyGymEnv(config)
+#     # Access unique_id from the config
+#     config.unique_id = 1  # TODO: remove debugging
+#     return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=config.unique_id)
+#     # return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=unique_id)
 
-# @ex.capture
-def create_env_pandemic(
-        config, 
-        # unique_id
-    ):
-    # print(f"PANDEMIC CREATION: {unique_id=}", file=sys.stderr)
-    base_env = PandemicPolicyGymEnv(config)
-    # Access unique_id from the config
-    config.unique_id = 1  # TODO: remove debugging
-    return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=config.unique_id)
-    # return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=unique_id)
+# def create_env_tomato(config):
+#     print(f"CREATE TOM: {config=}", file=sys.stderr)
+#     base_env = Tomato_Environment(config)
+#     config.unique_id = 1
+#     return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=config.unique_id)
 
-# @ex.capture
-def create_env_tomato(
-        config, 
-        # unique_id
-    ):
-    # print(f"TOMATO CREATION: {unique_id=}", file=sys.stderr)
+
+sys.path.append(os.path.abspath("extensions/algorithms"))
+from real_id_file import REAL_ID
+
+def create_env_tomato(config):
+    print(f"CREATE TOM: {config=}", file=sys.stderr)
+    print(f"CREATE TOM: {REAL_ID=}", file=sys.stderr)
     base_env = Tomato_Environment(config)
-    # Access unique_id from the config
-    config.unique_id = 1
+    config.unique_id = REAL_ID
     return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=config.unique_id)
-    # return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=unique_id)
+
 
 # Make create_env a global variable that can be overridden
 # create_env = create_env
 @ex.config
 def env_config():
+    unique_id = REAL_ID
     env_to_run = "tomato"  # noqa: F841
     experiment_parts = [env_to_run]  # noqa: F841
 
-create_glucose_config(ex)
-create_pandemic_config(ex, use_custom_rm=True, custom_rm=create_env_pandemic)
+# create_glucose_config(ex)
+# create_pandemic_config(ex, use_custom_rm=True, custom_rm=create_env_pandemic)  # NOTE: LMB can comment out glucose and traffic while debugging
 create_tomato_config(ex, use_custom_rm=True, custom_rm=create_env_tomato)
-create_traffic_config(ex)
+# create_traffic_config(ex)
+
+# print("This is outside the main in train", file=sys.stderr)
+# print(ex.config, file=sys.stderr)
+
 
 EPS = 1e-9
 
@@ -109,14 +118,6 @@ def common_config(  # noqa: C901
     unique_id,
     _log,
 ):
-    # create_glucose_config(ex)
-    # create_pandemic_config(ex, use_custom_rm=True, custom_rm=create_env_pandemic)
-    # create_tomato_config(ex, use_custom_rm=True, custom_rm=create_env_tomato)
-    # create_traffic_config(ex)
-
-    # create_pandemic_config(ex, unique_id, use_custom_rm=True, custom_rm=create_env_pandemic)
-    # create_tomato_config(ex, unique_id, use_custom_rm=True, custom_rm=create_env_tomato)
-
     num_cpus = available_cpu_count()  # noqa: F841
 
     # Add unique_id to config if not already present
@@ -524,7 +525,8 @@ def create_multiagent(
 # @ex.automain
 @ex.main
 def main(
-    unique_id,
+    # real_id,
+    # unique_id,
     config,
     log_dir,
     ray_init_kwargs,
@@ -541,7 +543,12 @@ def main(
     num_cpus: int,
     _log: Logger,
 ):
-    print(f"TRAIN: {unique_id=}", file=sys.stderr)
+    # create_tomato_config(FOO, use_custom_rm=True, custom_rm=create_env_tomato)
+    # base_env = Tomato_Environment(ex.config)
+    # print(base_env, file=sys.stderr)
+    # create_tomato_config(foo, use_custom_rm=True, custom_rm=create_env_tomato)
+    # print(f"TRAIN: {real_id=}", file=sys.stderr)
+    # print(f"TRAIN: {unique_id=}", file=sys.stderr)
     temp_dir = tempfile.mkdtemp()
     os.environ["RAY_AIR_NEW_PERSISTENCE_MODE"] = "0"
     ray.init(

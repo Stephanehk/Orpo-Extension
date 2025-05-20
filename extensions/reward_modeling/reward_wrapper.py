@@ -467,7 +467,7 @@ class RewardWrapper(Wrapper):
             self.reward_net.load_params(map_to_cpu=True)
             self.reward_net.eval()
 
-        # self.timestamp = os.path.getmtime(self.reward_net.get_fp())  # NOTE: LMB commented out
+        self.timestamp = os.path.getmtime(self.reward_net.get_fp())  # NOTE: LMB commented out
 
       
     def _get_concatenated_obs_action(self, obs, new_obs, actions):
@@ -494,10 +494,10 @@ class RewardWrapper(Wrapper):
             # self.reward_net.load_params(map_to_cpu=True)
             # the point is to update the reward model rather than env; 
             # TODO: LMB fix this later, will have to uncomment this out later
-            # if os.path.getmtime(self.reward_net.get_fp()) != self.timestamp:  # NOTE: LMB commented out
-            #     self.reward_net.load_params(map_to_cpu=True)
-            #     self.timestamp = os.path.getmtime(self.reward_net.get_fp())
-            #     print("Reloading reward model parameters")
+            if os.path.getmtime(self.reward_net.get_fp()) != self.timestamp:  # NOTE: LMB commented out
+                self.reward_net.load_params(map_to_cpu=True)
+                self.timestamp = os.path.getmtime(self.reward_net.get_fp())
+                print("Reloading reward model parameters")
             # Convert to tensors
             #check if obs is an OrderedDict
             obs_in=obs

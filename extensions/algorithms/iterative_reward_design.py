@@ -30,6 +30,9 @@ import uuid
 import warnings
 warnings.filterwarnings("ignore")
 
+sys.path.append(os.path.abspath("extensions/algorithms"))
+from real_id_file import REAL_ID
+
 
 # Create a new experiment for iterative reward design
 iterative_ex = Experiment("iterative_reward_design", save_git_info=False)
@@ -97,12 +100,14 @@ def main(
     reward_wrapper_class,
     num_training_iters_1,
     num_training_iters_2,
-    unique_id,
+    # unique_id,
     _log
 ):
     """
     Main function that runs the training with a configurable reward wrapper.
     """    
+    # print(f"IRD: {real_id=}", file=sys.stderr)
+
     # unique_id_state.state["unique_id"] = f"{reward_fun}_{seed}_{int(time.time())}"
 
     #all these args must be manual set per environment (annoying but we can't init gym env here) 
@@ -114,7 +119,8 @@ def main(
             discrete_actions = True,
             env_name="pandemic",
             # unique_id=unique_id_state.state["unique_id"]
-            unique_id=unique_id
+            # unique_id=unique_id
+            unique_id=REAL_ID
         )    
     elif "tomato" in env_to_run:
         reward_model = RewardModel(
@@ -124,7 +130,8 @@ def main(
             discrete_actions = True,
             env_name="tomato",
             # unique_id=unique_id_state.state["unique_id"]
-            unique_id=unique_id
+            # unique_id=unique_id
+            unique_id=REAL_ID
         )
     else:
         raise ValueError("Unsupported environment type")
@@ -134,7 +141,7 @@ def main(
     for i in range(10):
         print("(iterative_reward_design.py) UNIQUE ID (WHICH SHOULD BE THE SAME FOR ALL ITERATIONS):")
         # print(unique_id_state.state["unique_id"])
-        print(f"IRD: {unique_id=}")
+        print(f"IRD: {REAL_ID=}")  # NOTE: LMB: this isn't actually used in the ird file, only in the train file, since we circumvent needing to pass it in through ird, by directly caching the file
         print("======================")
         print("checkpoint_to_load_current_policy", checkpoint_to_load_current_policy)
         print("checkpoint_to_load_policies", checkpoint_to_load_policies)
@@ -168,7 +175,8 @@ def main(
                 "num_gpus": num_gpus,
                 "experiment_parts": experiment_parts,
                 "num_training_iters": num_training_iters_1,
-                "unique_id": unique_id
+                # "unique_id": unique_id,
+                # "real_id": real_id
             }
         )
         print(f"{reference_result.config}", file=sys.stderr)
@@ -200,7 +208,8 @@ def main(
                 "num_gpus": num_gpus,
                 "experiment_parts": experiment_parts,
                 "num_training_iters": num_training_iters_2,
-                "unique_id": unique_id
+                # "unique_id": unique_id,
+                # "real_id": real_id
             }
         )
 

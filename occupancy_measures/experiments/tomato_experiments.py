@@ -15,13 +15,13 @@ from ..envs.tomato_callbacks import TomatoCallbacks
 from ..envs.tomato_environment import create_simple_example,Tomato_Environment
 
 
-def create_tomato_config(ex,use_custom_rm=False, custom_rm=None):
+def create_tomato_config(ex, use_custom_rm=False, custom_rm=None):
     ex.add_config({
         'use_custom_rm': use_custom_rm,
-        'custom_rm': custom_rm
+        'custom_rm': custom_rm,
     })
     @ex.config
-    def tomato_config(env_to_run, experiment_parts,use_custom_rm, custom_rm, _log):
+    def tomato_config(env_to_run, experiment_parts, use_custom_rm, custom_rm, _log):
         if env_to_run == "tomato":
             # Environment
             env_name = "tomato_env"
