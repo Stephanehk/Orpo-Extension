@@ -60,19 +60,30 @@ sacred_settings.CONFIG.READ_ONLY_CONFIG = False
 
 faulthandler.register(signal.SIGUSR1)
 
-def create_env_pandemic(config):
+
+# @ex.capture
+def create_env_pandemic(
+        config, 
+        # unique_id
+    ):
+    # print(f"PANDEMIC CREATION: {unique_id=}", file=sys.stderr)
     base_env = PandemicPolicyGymEnv(config)
     # Access unique_id from the config
     config.unique_id = 1  # TODO: remove debugging
-    # return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_pandemic"), unique_id=unique_id_state.state["unique_id"])
     return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=config.unique_id)
+    # return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=unique_id)
 
-def create_env_tomato(config):
+# @ex.capture
+def create_env_tomato(
+        config, 
+        # unique_id
+    ):
+    # print(f"TOMATO CREATION: {unique_id=}", file=sys.stderr)
     base_env = Tomato_Environment(config)
     # Access unique_id from the config
     config.unique_id = 1
     return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=config.unique_id)
-    # return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=unique_id_state.state["unique_id"])
+    # return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=unique_id)
 
 # Make create_env a global variable that can be overridden
 # create_env = create_env
@@ -81,13 +92,6 @@ def env_config():
     env_to_run = "tomato"  # noqa: F841
     experiment_parts = [env_to_run]  # noqa: F841
 
-
-#this is so frustrating; wth is sacred doing (!!)
-# if not unique_id_state.state["set"]:
-#     unique_id_state.state["unique_id"] = f"{int(time.time())}"
-#     unique_id_state.state["set"] = True
-#     print ("(train_policy.py) UNIQUE ID (WHICH SHOULD BE THE SAME FOR ALL ITERATIONS):")
-#     print (unique_id_state.state["unique_id"])
 create_glucose_config(ex)
 create_pandemic_config(ex, use_custom_rm=True, custom_rm=create_env_pandemic)
 create_tomato_config(ex, use_custom_rm=True, custom_rm=create_env_tomato)
@@ -104,7 +108,15 @@ def common_config(  # noqa: C901
     experiment_parts,
     unique_id,
     _log,
-):  
+):
+    # create_glucose_config(ex)
+    # create_pandemic_config(ex, use_custom_rm=True, custom_rm=create_env_pandemic)
+    # create_tomato_config(ex, use_custom_rm=True, custom_rm=create_env_tomato)
+    # create_traffic_config(ex)
+
+    # create_pandemic_config(ex, unique_id, use_custom_rm=True, custom_rm=create_env_pandemic)
+    # create_tomato_config(ex, unique_id, use_custom_rm=True, custom_rm=create_env_tomato)
+
     num_cpus = available_cpu_count()  # noqa: F841
 
     # Add unique_id to config if not already present

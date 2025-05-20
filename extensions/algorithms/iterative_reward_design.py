@@ -151,6 +151,7 @@ def main(
         #     checkpoint_to_load_current_policy = None
         #     num_training_iters_1 = temp_num_training_iters_1
 
+        # agent learns a policy, unique policy created to save/load reward model (constrained to reference policy)
         reference_result = ex.run(
             config_updates={
                 "env_to_run": env_to_run,
@@ -182,6 +183,7 @@ def main(
         #     checkpoint_to_load_current_policy = None
         #     num_training_iters_2 = temp_num_training_iters_2
 
+        # learn an unconstrained reward policy 
         over_opt_result = ex.run(
             config_updates={
                 "env_to_run": env_to_run,
@@ -205,10 +207,11 @@ def main(
         
         eval_batch_over_opt = over_opt_result.result[2]
         
+        # take the two policies, create the preference dataset, train/update the reward model
         #TODO: our reward model might need to input a history of obs (possibly just last obs) instead of just the current obs
-        reward_model.update_params(eval_batch_over_opt["current"],eval_batch_reference["current"], iteration=i)
+        reward_model.update_params(eval_batch_over_opt["current"], eval_batch_reference["current"], iteration=i)
 
-        checkpoint_to_load_policies = ["/next/u/stephhk/orpo/"+reference_result.result[1]]
+        checkpoint_to_load_policies = ["/next/u/loganmb/orpo/"+reference_result.result[1]]  # updates the reference policy
         # checkpoint_to_load_current_policy = "/next/u/stephhk/orpo/"+reference_result.result[1]
 
         print(checkpoint_to_load_policies)

@@ -294,11 +294,11 @@ class RewardModel(nn.Module):
                 time_major=False,
             )
         
-        print("Proxy reward seq:")
-        print(proxy_reward_seq)
-        print("Reward seq for prefs:")
-        print(modified_reward_seq)
-        print("==========================")
+        # print("Proxy reward seq:")
+        # print(proxy_reward_seq)
+        # print("Reward seq for prefs:")
+        # print(modified_reward_seq)
+        # print("==========================")
         #the first element of these sequences is blank (i.e., initial obs, but same as the obs at the first time-step), so we need to remove it
        
         rewards_sequences = rewards_sequences[:,1:]
@@ -365,12 +365,12 @@ class RewardModel(nn.Module):
                 proxy_reward_seq2,
                 indices_pair[1],
             )
-            print(proxy_reward_seq1)
-            print(reward_sequences_for_prefs1)
-            print("\n")
-            print(proxy_reward_seq2)
-            print(reward_sequences_for_prefs2)
-            print("==============")
+            # print(proxy_reward_seq1)
+            # print(reward_sequences_for_prefs1)
+            # print("\n")
+            # print(proxy_reward_seq2)
+            # print(reward_sequences_for_prefs2)
+            # print("==============")
 
             true_reward_label = self._calculate_true_reward_comparisons(traj1, traj2).to(self.device)
             self.replay_buffer.push(traj1, traj2, true_reward_label)
@@ -413,8 +413,8 @@ class RewardModel(nn.Module):
             
             self.optimizer.zero_grad()
             reward_model_loss.backward()
-            print("reward model loss:")
-            print(reward_model_loss)
+            # print("reward model loss:")
+            # print(reward_model_loss)
             all_losses.append(reward_model_loss.item())
             self.optimizer.step()
             self.scheduler.step()
@@ -424,18 +424,18 @@ class RewardModel(nn.Module):
             raise ValueError("unique_id must be set to save parameters")
         torch.save(self.state_dict(), f"active_models/reward_model_{self.unique_id}.pth")
         #save reward model loss
-        with open(f"active_models/reward_model_loss_{self.unique_id}.txt", "a") as f:
-            f.write(f"Iteration {iteration}: {reward_model_loss.item()}\n")
+        # with open(f"active_models/reward_model_loss_{self.unique_id}.txt", "a") as f:
+        #     f.write(f"Iteration {iteration}: {reward_model_loss.item()}\n")
 
             
-        with open(f"active_models/reward_model_all_losses_{self.unique_id}.txt", "a") as f:
-            f.write(f"Iteration {iteration}: {all_losses}\n")
-        with open(f"active_models/traj_1_preds_{self.unique_id}.txt", "a") as f:
-            f.write(f"Iteration {iteration}: {traj_1_preds}\n")
+        # with open(f"active_models/reward_model_all_losses_{self.unique_id}.txt", "a") as f:
+        #     f.write(f"Iteration {iteration}: {all_losses}\n")
+        # with open(f"active_models/traj_1_preds_{self.unique_id}.txt", "a") as f:
+        #     f.write(f"Iteration {iteration}: {traj_1_preds}\n")
         
-        #save replay buffer
-        with open(f"active_models/replay_buffer_{self.unique_id}.pkl", "wb") as f:
-            torch.save(self.replay_buffer, f)
+        # #save replay buffer
+        # with open(f"active_models/replay_buffer_{self.unique_id}.pkl", "wb") as f:
+        #     torch.save(self.replay_buffer, f)
 
 class RewardWrapper(Wrapper):
     def __init__(self, env, reward_model="custom", unique_id=None):
@@ -492,6 +492,8 @@ class RewardWrapper(Wrapper):
         if "custom" in self.reward_model:
             #this is so janky <- we need to figure out a better way to do this
             # self.reward_net.load_params(map_to_cpu=True)
+            # the point is to update the reward model rather than env; 
+            # TODO: LMB fix this later, will have to uncomment this out later
             # if os.path.getmtime(self.reward_net.get_fp()) != self.timestamp:  # NOTE: LMB commented out
             #     self.reward_net.load_params(map_to_cpu=True)
             #     self.timestamp = os.path.getmtime(self.reward_net.get_fp())
