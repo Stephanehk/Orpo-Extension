@@ -82,8 +82,8 @@ sys.path.append(os.path.abspath("extensions/algorithms"))
 from real_id_file import REAL_ID
 
 def create_env_tomato(config):
-    print(f"CREATE TOM: {config=}", file=sys.stderr)
-    print(f"CREATE TOM: {REAL_ID=}", file=sys.stderr)
+    # print(f"CREATE TOM: {config=}", file=sys.stderr)
+    # print(f"CREATE TOM: {REAL_ID=}", file=sys.stderr)
     base_env = Tomato_Environment(config)
     config.unique_id = REAL_ID
     return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=config.unique_id)
@@ -525,8 +525,6 @@ def create_multiagent(
 # @ex.automain
 @ex.main
 def main(
-    # real_id,
-    # unique_id,
     config,
     log_dir,
     ray_init_kwargs,
@@ -543,12 +541,6 @@ def main(
     num_cpus: int,
     _log: Logger,
 ):
-    # create_tomato_config(FOO, use_custom_rm=True, custom_rm=create_env_tomato)
-    # base_env = Tomato_Environment(ex.config)
-    # print(base_env, file=sys.stderr)
-    # create_tomato_config(foo, use_custom_rm=True, custom_rm=create_env_tomato)
-    # print(f"TRAIN: {real_id=}", file=sys.stderr)
-    # print(f"TRAIN: {unique_id=}", file=sys.stderr)
     temp_dir = tempfile.mkdtemp()
     os.environ["RAY_AIR_NEW_PERSISTENCE_MODE"] = "0"
     ray.init(
