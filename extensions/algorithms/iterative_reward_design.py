@@ -12,7 +12,7 @@ from ray.rllib.policy.sample_batch import MultiAgentBatch, SampleBatch, concat_s
 from sacred import Experiment
 from occupancy_measures.agents.orpo import ORPO, ORPOPolicy
 
-from extensions.reward_modeling.reward_wrapper import RewardWrapper,RewardModel
+from extensions.reward_modeling.reward_wrapper_reg import RewardWrapper,RewardModel
 from pandemic_simulator.environment.pandemic_env import PandemicPolicyGymEnv
 
 from extensions.algorithms.train_policy import ex
@@ -99,7 +99,7 @@ def main(
     #all these args must be manual set per environment (annoying but we can't init gym env here) 
     if "pandemic" in env_to_run:
         reward_model = RewardModel(
-            obs_dim=2*24*13, # Assuming the observation space is a 1D array of size 24*13
+            obs_dim=24*13, # Assuming the observation space is a 1D array of size 24*13
             action_dim=3,
             sequence_lens=193,
             discrete_actions = True,
@@ -113,7 +113,8 @@ def main(
             sequence_lens=100,
             discrete_actions = True,
             env_name="tomato",
-            unique_id=unique_id_state.state["unique_id"]
+            unique_id=unique_id_state.state["unique_id"],
+            n_epochs=100
         )
     else:
         raise ValueError("Unsupported environment type")
@@ -158,24 +159,17 @@ def main(
             }
         )
         eval_batch_reference = reference_result.result[2]
-
-        #TODO: remember to delete after debugging
-        # if i == 0:
-        #     checkpoint_to_load_current_policy = "/next/u/stephhk/orpo/data/logs/tomato/2025-05-07_13-19-16/checkpoint_000300"
-        #     temp_num_training_iters_2=num_training_iters_2
-        #     num_training_iters_2 = 1
-        # else:
-        #     checkpoint_to_load_current_policy = None
-        #     num_training_iters_2 = temp_num_training_iters_2
-
+        
+        assert om_divergence_coeffs_2[0] == 0
+        assert level == 4
         over_opt_result = ex.run(
             config_updates={
                 "env_to_run": env_to_run,
-                "lebel":level,
+                "level":level,
                 "reward_fun": reward_fun,
                 "exp_algo": exp_algo,
                 "om_divergence_coeffs": om_divergence_coeffs_2,
-                "checkpoint_to_load_policies": checkpoint_to_load_policies,
+                "checkpoint_to_load_policies": None,
                 "checkpoint_to_load_current_policy": checkpoint_to_load_current_policy,
                 "seed": seed,
                 "experiment_tag": experiment_tag,
@@ -185,13 +179,13 @@ def main(
                 "experiment_parts": experiment_parts,
                 "num_training_iters": num_training_iters_2,
             }
-        )
-
-        
+        )        
         eval_batch_over_opt = over_opt_result.result[2]
         
         #TODO: our reward model might need to input a history of obs (possibly just last obs) instead of just the current obs
-        reward_model.update_params(eval_batch_over_opt["current"],eval_batch_reference["current"], iteration=i)
+        print (len(eval_batch_over_opt["current"]))
+        print (len(eval_batch_reference["current"]))
+        reward_model.update_params(eval_batch_over_opt["current"][:len(eval_batch_reference["current"])],eval_batch_reference["current"], iteration=i)
 
         checkpoint_to_load_policies = ["/next/u/stephhk/orpo/"+reference_result.result[1]]
         # checkpoint_to_load_current_policy = "/next/u/stephhk/orpo/"+reference_result.result[1]

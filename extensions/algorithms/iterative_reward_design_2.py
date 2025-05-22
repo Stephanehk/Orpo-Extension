@@ -12,13 +12,14 @@ from ray.rllib.policy.sample_batch import MultiAgentBatch, SampleBatch, concat_s
 from sacred import Experiment
 from occupancy_measures.agents.orpo import ORPO, ORPOPolicy
 
-from extensions.reward_modeling.reward_wrapper import RewardWrapper,RewardModel
+from extensions.reward_modeling.reward_wrapper_reg import RewardWrapper,RewardModel,ReplayBuffer
+
 from pandemic_simulator.environment.pandemic_env import PandemicPolicyGymEnv
 
-from extensions.algorithms.train_policy import ex
+from extensions.algorithms.train_policy_2 import ex
 from extensions.environments.pandemic_configs import get_pandemic_env_gt_rew
-import extensions.algorithms.train_policy
-import extensions.algorithms.unique_id_state as unique_id_state
+import extensions.algorithms.train_policy_2
+import extensions.algorithms.unique_id_state_2 as unique_id_state
 import time
 
 import warnings
@@ -26,7 +27,7 @@ warnings.filterwarnings("ignore")
 
 
 # Create a new experiment for iterative reward design
-iterative_ex = Experiment("iterative_reward_design", save_git_info=False)
+iterative_ex = Experiment("iterative_reward_design_2", save_git_info=False)
 
 # def create_custom_env(config, reward_wrapper_class: Optional[Callable] = None, reward_net= None):
 #     """
@@ -99,7 +100,7 @@ def main(
     #all these args must be manual set per environment (annoying but we can't init gym env here) 
     if "pandemic" in env_to_run:
         reward_model = RewardModel(
-            obs_dim=2*24*13, # Assuming the observation space is a 1D array of size 24*13
+            obs_dim=24*13, # Assuming the observation space is a 1D array of size 24*13
             action_dim=3,
             sequence_lens=193,
             discrete_actions = True,
@@ -117,9 +118,21 @@ def main(
         )
     else:
         raise ValueError("Unsupported environment type")
-    reward_model.zero_model_params()
-    reward_model.save_params()
-    
+
+    #TODO:uncomment when we are not unpausing!!
+    # reward_model.zero_model_params()
+    # reward_model.save_params()
+
+    #---------------------------
+    # torch.serialization.add_safe_globals([ReplayBuffer])
+    # with open(f"active_models/replay_buffer_{unique_id_state.state["unique_id"]}.pkl", "rb") as f:
+    #     reward_model.replay_buffer = torch.load(f)
+    # reward_model.replay_buffer.buffer = reward_model.replay_buffer.buffer[:6241]
+    # print ("replay buffer size: ", len(reward_model.replay_buffer))
+
+    # #checkpoint_to_load_current_policy /next/u/stephhk/orpo/data/base_policy_checkpoints/pandemic_base_policy/checkpoint_000100
+    # checkpoint_to_load_policies ['/next/u/stephhk/orpo/data/logs/pandemic/2025-05-14_10-06-52/checkpoint_000025']
+    #---------------------------
     for i in range(10):
         print ("(iterative_reward_design.py) UNIQUE ID (WHICH SHOULD BE THE SAME FOR ALL ITERATIONS):")
         print (unique_id_state.state["unique_id"])
@@ -171,11 +184,11 @@ def main(
         over_opt_result = ex.run(
             config_updates={
                 "env_to_run": env_to_run,
-                "lebel":level,
+                "level":level,
                 "reward_fun": reward_fun,
                 "exp_algo": exp_algo,
                 "om_divergence_coeffs": om_divergence_coeffs_2,
-                "checkpoint_to_load_policies": checkpoint_to_load_policies,
+                "checkpoint_to_load_policies": None,
                 "checkpoint_to_load_current_policy": checkpoint_to_load_current_policy,
                 "seed": seed,
                 "experiment_tag": experiment_tag,
@@ -191,7 +204,7 @@ def main(
         eval_batch_over_opt = over_opt_result.result[2]
         
         #TODO: our reward model might need to input a history of obs (possibly just last obs) instead of just the current obs
-        reward_model.update_params(eval_batch_over_opt["current"],eval_batch_reference["current"], iteration=i)
+        reward_model.update_params(eval_batch_over_opt["current"][:len(eval_batch_reference["current"])],eval_batch_reference["current"], iteration=i)
 
         checkpoint_to_load_policies = ["/next/u/stephhk/orpo/"+reference_result.result[1]]
         # checkpoint_to_load_current_policy = "/next/u/stephhk/orpo/"+reference_result.result[1]

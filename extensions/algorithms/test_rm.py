@@ -12,7 +12,11 @@ import torch
 from sacred import Experiment
 from occupancy_measures.agents.orpo import ORPO, ORPOPolicy
 
-from extensions.reward_modeling.reward_wrapper import RewardWrapper,RewardModel,ReplayBuffer
+# from extensions.reward_modeling.reward_wrapper import RewardWrapper,RewardModel,ReplayBuffer
+# from extensions.reward_modeling.reward_wrapper_reg import RewardWrapper,RewardModel,ReplayBuffer
+from extensions.reward_modeling.reward_wrapper_reg import RewardWrapper,RewardModel,ReplayBuffer
+# from extensions.reward_modeling.reward_wrapper import RewardModel
+
 from pandemic_simulator.environment.pandemic_env import PandemicPolicyGymEnv
 
 from extensions.algorithms.train_policy import ex
@@ -25,13 +29,36 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
+# reward_model = RewardModel(
+#     obs_dim=2*36, # Assuming the observation space is a 1D array of size 24*13
+#     action_dim=4,
+#     sequence_lens=100,
+#     discrete_actions = True,
+#     unique_id=-1,
+#     env_name = "tomato"
+# )
+
 reward_model = RewardModel(
-    obs_dim=2*36, # Assuming the observation space is a 1D array of size 24*13
-    action_dim=4,
-    sequence_lens=100,
+    obs_dim=2*24*13, # Assuming the observation space is a 1D array of size 24*13
+    action_dim=3,
+    sequence_lens=193,
     discrete_actions = True,
-    unique_id=-1
-)
+    env_name="pandemic_sas",
+    unique_id=-106,
+    lr=0.0001,
+    n_epochs=200,
+)    
+
+# reward_model = RewardModel(
+#     obs_dim=24*13, # Assuming the observation space is a 1D array of size 24*13
+#     action_dim=3,
+#     sequence_lens=193,
+#     discrete_actions = True,
+#     env_name="pandemic_test",
+#     unique_id=-102,
+#     lr=0.0001
+# )    
+
 
 #load replay buffer sized via
 # with open(f"active_models/replay_buffer_{self.unique_id}.pkl", "wb") as f:
@@ -39,9 +66,12 @@ reward_model = RewardModel(
 
 #load replay buffer:
 torch.serialization.add_safe_globals([ReplayBuffer])
-with open(f"active_models/replay_buffer_{3}.pkl", "rb") as f:
+with open(f"active_models/replay_buffer_{500}.pkl", "rb") as f:
     reward_model.replay_buffer = torch.load(f)
-reward_model.update_params(None, None,0, debug_mode=True)
+# reward_model.replay_buffer.buffer = reward_model.replay_buffer.buffer[:18723]
+print ("replay buffer size: ", len(reward_model.replay_buffer))
+
+reward_model.update_params(None, None,0, debug_mode=True,use_minibatch=True)
 
 # reward_model.unique_id = 3
 # reward_model.load_params()

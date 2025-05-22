@@ -20,8 +20,15 @@ def load_rewards_from_run(run_path):
     if not result_file.exists():
         raise FileNotFoundError(f"Could not find result.json in {run_path}")
     
+    # with open(result_file, 'r') as f:     
+    #     results = [json.loads(line) for line in f]
+    results = []
     with open(result_file, 'r') as f:
-        results = [json.loads(line) for line in f]
+        for i, line in enumerate(f, start=1):
+            try:
+                results.append(json.loads(line))
+            except json.JSONDecodeError as e:
+                print(f"Error decoding line {i}: {e}")
     
     true_rewards = []
     proxy_rewards = []
@@ -44,10 +51,11 @@ def plot_rewards(run_path, save_path=None):
         save_path: Optional path to save the plot
     """
     true_rewards, proxy_rewards, steps = load_rewards_from_run(run_path)
-    
+    print (true_rewards)
     plt.figure(figsize=(10, 6))
-    plt.plot(steps, true_rewards, label='True Reward', color='blue')
+    # plt.plot(steps, true_rewards, label='True Reward', color='blue')
     plt.plot(steps, proxy_rewards, label='Proxy Reward', color='red')
+    print (len(proxy_rewards))
     
     plt.xlabel('Training Steps')
     plt.ylabel('Reward')
@@ -71,12 +79,26 @@ if __name__ == "__main__":
     #contrained with regularization
     # run_path = "data/logs/pandemic/2025-05-05_13-36-03/"  #"data/logs/pandemic/2025-05-05_21-18-28/"
     #over-optimization (i.e., no regularization)
-    run_path = "data/logs/pandemic/ORPO/proxy/model_128-128/weights_10.0_0.1_0.01//seed_0/2025-05-05_21-29-00/" #"data/logs/pandemic/2025-05-06_06-41-21/"
+    # run_path = "data/logs/pandemic/ORPO/proxy/model_128-128/weights_10.0_0.1_0.01//seed_0/2025-05-05_21-29-00/" #"data/logs/pandemic/2025-05-06_06-41-21/"
     #-----TOMATO WORLD-----
     # contrained with regularization
     # run_path = "data/logs/tomato/rhard/ORPO/proxy/model_512-512-512-512/state/kl-0.8/seed_0/2025-05-06_17-56-37/"
     # over-optimization (i.e., no regularization)
     # run_path = "data/logs/tomato/rhard/ORPO/proxy/model_512-512-512-512/seed_0/2025-05-06_15-48-27"
     #2025-05-05_21-18-28/
+    #-----TRAFFIC-----
+    #constrained with regularization
+    # run_path = "data/logs/traffic/2025-05-21_02-07-33/"
+    # run_path = "data/logs/traffic/2025-05-20_16-18-05/"
+    #over-optimization (i.e., no regularization)
+    # run_path = "data/logs/traffic/singleagent_merge_bus/ORPO/proxy/model_512-512-512-512/state/kl-0.0/seed_0/2025-05-21_11-44-46/"
+    run_path = "data/logs/traffic/2025-05-21_11-44-46/"
+    #-----
+    # run_path = "data/logs/tomato/rhard/ORPO/proxy/model_512-512-512-512//seed_0/2025-05-09_16-44-09/"
+    # run_path = "data/logs/pandemic/2025-05-14_17-03-53"
+    # run_path = "data/logs/traffic/2025-05-21_02-07-33/"
+    #data/logs/traffic/2025-05-20_16-16-40/
+
+
     # Plot and save the rewards
     plot_rewards(run_path, save_path="rewards_plot.png") 

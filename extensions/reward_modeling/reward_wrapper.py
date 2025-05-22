@@ -16,7 +16,7 @@ from ray.rllib.policy.rnn_sequencing import add_time_dimension
 from ray.rllib.policy.sample_batch import MultiAgentBatch, SampleBatch
 
 class ReplayBuffer:
-    def __init__(self, max_size=10000):
+    def __init__(self, max_size=500000):
         self.max_size = max_size
         self.buffer = []
         self.position = 0
@@ -46,16 +46,26 @@ class RewardModel(nn.Module):
         self.action_dim = action_dim
         self.discrete_actions = discrete_actions
         self.env_name = env_name
-        if env_name == "tomato":
+        # # if env_name == "tomato":
+        if self.env_name == "pandemic_testing":
+            self.fc1 = nn.Linear(obs_dim + action_dim, 128)
+            self.fc2 = nn.Linear(128, 128)
+            self.fc3 = nn.Linear(128, 1)
+        else:
             self.fc1 = nn.Linear(obs_dim + action_dim, 512)
             self.fc2 = nn.Linear(512, 512)
             self.fc3 = nn.Linear(512, 512)
             self.fc4 = nn.Linear(512, 512)
             self.fc5 = nn.Linear(512, 1)
-        elif env_name == "pandemic":
-            self.fc1 = nn.Linear(obs_dim + action_dim, 128)
-            self.fc2 = nn.Linear(128, 128)
-            self.fc3 = nn.Linear(128, 1)
+        # self.fc1 = nn.Linear(obs_dim + action_dim, 512)
+        # self.fc2 = nn.Linear(512, 512)
+        # self.fc3 = nn.Linear(512, 512)
+        # self.fc4 = nn.Linear(512, 512)
+        # self.fc5 = nn.Linear(512, 1)
+        # elif env_name == "pandemic":
+        #     self.fc1 = nn.Linear(obs_dim + action_dim, 128)
+        #     self.fc2 = nn.Linear(128, 128)
+        #     self.fc3 = nn.Linear(128, 1)
         # self.initialize_model()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.to(self.device)
@@ -63,16 +73,16 @@ class RewardModel(nn.Module):
         self.unique_id = unique_id
         self.n_prefs_per_update=n_prefs_per_update
 
-
         print ("Create rm with unique_id:", self.unique_id)
 
         #initialize Adam optimizer
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr,weight_decay=1e-5)
-        # torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
+        torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=2.0)
 
         # decay_factor = (final_lr / lr) ** (1 / n_epochs)  # decay factor per step
         # self.scheduler = LambdaLR(self.optimizer, lr_lambda=lambda step: decay_factor ** step)
         self.n_epochs = n_epochs
+        self.sigmoid = nn.Sigmoid()
         
         # Initialize replay buffer
         self.replay_buffer = ReplayBuffer()
@@ -91,16 +101,26 @@ class RewardModel(nn.Module):
         torch.save(self.state_dict(), f"active_models/reward_model_{self.unique_id}.pth")
 
     def forward(self, x):
-        if self.env_name  == "tomato":
+        # if self.env_name  == "tomato":
+        if self.env_name == "pandemic_testing":
+            x = torch.relu(self.fc1(x))
+            x = torch.relu(self.fc2(x))
+            x = self.fc3(x)
+        else:
             x = torch.relu(self.fc1(x))
             x = torch.relu(self.fc2(x))
             x = torch.relu(self.fc3(x))
             x = torch.relu(self.fc4(x))
             x = self.fc5(x)
-        elif self.env_name  == "pandemic":
-            x = torch.relu(self.fc1(x))
-            x = torch.relu(self.fc2(x))
-            x = self.fc3(x)
+        # x = torch.relu(self.fc1(x))
+        # x = torch.relu(self.fc2(x))
+        # x = torch.relu(self.fc3(x))
+        # x = torch.relu(self.fc4(x))
+        # x = self.fc5(x)
+        # elif self.env_name  == "pandemic":
+        #     x = torch.relu(self.fc1(x))
+        #     x = torch.relu(self.fc2(x))
+        #     x = self.fc3(x)
         # print ("forward output:")
         # print (x)
         return x
@@ -109,6 +129,7 @@ class RewardModel(nn.Module):
         if self.unique_id is None:
             raise ValueError("unique_id must be set to load parameters")
         #load in state dict
+        print ("Loading reward model parameters from unique id:",self.unique_id)
         if map_to_cpu:
             self.load_state_dict(torch.load(f"active_models/reward_model_{self.unique_id}.pth", map_location=torch.device('cpu')))
         else:
@@ -186,9 +207,15 @@ class RewardModel(nn.Module):
     def _get_concatenated_obs_action(self, obs, new_obs, actions):
         if self.discrete_actions:
             encoded_actions = F.one_hot(actions.long(), self.action_dim)
-            net_input = torch.cat([obs,new_obs, encoded_actions], dim=1)
+            if new_obs is not None:
+                net_input = torch.cat([obs,new_obs, encoded_actions], dim=1)
+            else:
+                net_input = torch.cat([obs, encoded_actions], dim=1)
         else:
-            net_input = torch.cat([obs,new_obs, actions], dim=1)
+            if new_obs is not None:
+                net_input = torch.cat([obs,new_obs, actions], dim=1)
+            else:
+                net_input = torch.cat([obs, actions], dim=1)
         net_input = net_input.to(torch.float32)
         return net_input
 
@@ -209,13 +236,36 @@ class RewardModel(nn.Module):
             traj1_true_rewards, traj2_true_rewards
         )
         # softmax probability that traj 1 would be chosen over traj 2 based on the true reward
-        probs = 1 / (1 + torch.exp(rewards_diff))
+        # probs = 1 / (1 + torch.exp(rewards_diff))
+        probs = torch.sigmoid(rewards_diff)
         return (torch.rand(probs.size(), device=probs.device) < probs).float()
 
+    def _calculate_pred_rewards(self, traj1, traj2):
+        if "pandemic" in self.env_name and "sas" not in self.env_name:
+            net_input1 = self._get_concatenated_obs_action(traj1["obs"].flatten(1).to(self.device),None, traj1["actions"].to(self.device))
+            net_input2 = self._get_concatenated_obs_action(traj2["obs"].flatten(1).to(self.device),None, traj2["actions"].to(self.device))
+        else:
+            net_input1 = self._get_concatenated_obs_action(traj1["obs"].flatten(1).to(self.device),traj1["new_obs"].flatten(1).to(self.device), traj1["actions"].to(self.device))
+            net_input2 = self._get_concatenated_obs_action(traj2["obs"].flatten(1).to(self.device),traj2["new_obs"].flatten(1).to(self.device), traj2["actions"].to(self.device))
+
+        traj1_preds = self.forward(net_input1).flatten()
+        traj2_preds = self.forward(net_input2).flatten()
+        #add original proxy reward to the predicted reward
+        combined_traj1_preds = traj1_preds + traj1["proxy_rewards"].flatten().to(self.device)
+        combined_traj2_preds = traj2_preds + traj2["proxy_rewards"].flatten().to(self.device)
+
+        #sum rewards
+        # combined_traj1_preds = torch.sum(combined_traj1_preds, dim=0)
+        # combined_traj2_preds = torch.sum(combined_traj2_preds, dim=0)
+        return combined_traj1_preds, combined_traj2_preds
+
     def _calculate_boltzmann_pred_probs(self, traj1, traj2):
-       
-        net_input1 = self._get_concatenated_obs_action(traj1["obs"].flatten(1).to(self.device),traj1["new_obs"].flatten(1).to(self.device), traj1["actions"].to(self.device))
-        net_input2 = self._get_concatenated_obs_action(traj2["obs"].flatten(1).to(self.device),traj2["new_obs"].flatten(1).to(self.device), traj2["actions"].to(self.device))
+        if "pandemic" in self.env_name and "sas" not in self.env_name:
+            net_input1 = self._get_concatenated_obs_action(traj1["obs"].flatten(1).to(self.device),None, traj1["actions"].to(self.device))
+            net_input2 = self._get_concatenated_obs_action(traj2["obs"].flatten(1).to(self.device),None, traj2["actions"].to(self.device))
+        else:
+            net_input1 = self._get_concatenated_obs_action(traj1["obs"].flatten(1).to(self.device),traj1["new_obs"].flatten(1).to(self.device), traj1["actions"].to(self.device))
+            net_input2 = self._get_concatenated_obs_action(traj2["obs"].flatten(1).to(self.device),traj2["new_obs"].flatten(1).to(self.device), traj2["actions"].to(self.device))
 
         traj1_preds = self.forward(net_input1).flatten()#TODO: need to figure out how to add initial reward values to these estimates
         traj2_preds = self.forward(net_input2).flatten()
@@ -227,7 +277,9 @@ class RewardModel(nn.Module):
         combined_traj2_preds = traj2_preds + traj2["proxy_rewards"].flatten().to(self.device)
 
         preds_diff = self._calculate_discounted_sum_and_diffs(combined_traj1_preds, combined_traj2_preds)
-        softmax_probs = 1 / (1 + preds_diff.exp())
+
+        # softmax_probs = 1 / (1 + preds_diff.exp())
+        softmax_probs = torch.sigmoid(preds_diff)
        
         return softmax_probs, traj1_preds.cpu().detach().numpy()
 
@@ -291,11 +343,11 @@ class RewardModel(nn.Module):
                 time_major=False,
             )
         
-        print ("Proxy reward seq:")
-        print (proxy_reward_seq)
-        print ("Reward seq for prefs:")
-        print (modified_reward_seq)
-        print ("==========================")
+        # print ("Proxy reward seq:")
+        # print (proxy_reward_seq)
+        # print ("Reward seq for prefs:")
+        # print (modified_reward_seq)
+        # print ("==========================")
         #the first element of these sequences is blank (i.e., initial obs, but same as the obs at the first time-step), so we need to remove it
        
         rewards_sequences = rewards_sequences[:,1:]
@@ -333,12 +385,13 @@ class RewardModel(nn.Module):
 
         rewards_sequences1,acs_sequences1,obs_sequences1,new_obs_sequences1, reward_sequences_for_prefs1, proxy_reward_seq1 = self.get_batch_sequences(train_batch1,batch_seq_lens)
         rewards_sequences2,acs_sequences2,obs_sequences2,new_obs_sequences2, reward_sequences_for_prefs2, proxy_reward_seq2 = self.get_batch_sequences(train_batch2,batch_seq_lens)
-       
+        if self.env_name == "tomato":
+            assert num_sequences==20
         trajectory_pairs = [(i, j) for i in range(num_sequences-1) for j in range(num_sequences-1)]
-        # print ("# of trajectory pairs 2 add:", len(trajectory_pairs))
+        print ("# of trajectory pairs 2 add:", len(trajectory_pairs))
         # print (len(train_batch1))
         # print (len(train_batch2))
-        # print ("num_sequences:", num_sequences)
+        print ("num_sequences:", num_sequences)
         #randomly sample n_prefs_per_update pairs of trajectories
         if self.n_prefs_per_update is not None:
             selected_is = np.random.choice(list(range(len(trajectory_pairs))), size=self.n_prefs_per_update, replace=False)
@@ -362,26 +415,34 @@ class RewardModel(nn.Module):
                 proxy_reward_seq2,
                 indices_pair[1],
             )
-            print (proxy_reward_seq1)
-            print (reward_sequences_for_prefs1)
-            print ("\n")
-            print (proxy_reward_seq2)
-            print (reward_sequences_for_prefs2)
-            print ("==============")
+            # print (proxy_reward_seq1)
+            # print (reward_sequences_for_prefs1)
+            # print ("\n")
+            # print (proxy_reward_seq2)
+            # print (reward_sequences_for_prefs2)
+            # print ("==============")
 
             true_reward_label = self._calculate_true_reward_comparisons(traj1, traj2).to(self.device)
             self.replay_buffer.push(traj1, traj2, true_reward_label)
 
-    def update_params(self, train_batch1, train_batch2, iteration, debug_mode=False):
+    def update_params(self, train_batch1, train_batch2, iteration, debug_mode=False,use_minibatch=False,force_n_epochs=None):
         # Re-initialize model weights
         # self.initialize_model()
         self.reinitialize_model()
         self.train()
         if len (self.replay_buffer) > 1000:
-            self.n_epochs = 500
-        if len (self.replay_buffer) > 2000:
-            self.n_epochs = 1000
+            self.n_epochs = 200
+        
         self.scheduler  = CosineAnnealingLR(self.optimizer, T_max=self.n_epochs, eta_min=1e-4)
+
+        if force_n_epochs is not None:
+            self.n_epochs = force_n_epochs
+        # if len (self.replay_buffer) > 2000:
+        #     self.n_epochs = 400
+        # if len (self.replay_buffer) > 1000:
+        #     self.n_epochs = 500
+        # if len (self.replay_buffer) > 2000:
+        #     self.n_epochs = 750
         
         #seq lens:seq_lens: A 1D tensor of sequence lengths, denoting the non-padded length in timesteps of each rollout in the batch.
         if not debug_mode:
@@ -390,31 +451,64 @@ class RewardModel(nn.Module):
         # Then train on the entire replay buffer
         all_losses = []
         for _ in range(self.n_epochs):
-            reward_model_loss = 0
-            for item in self.replay_buffer.buffer:
-                if item is None:
-                    continue
-                traj1 = item['traj1']
-                traj2 = item['traj2']
-                true_label = item['true_label']
-                
-                predicted_reward_probs, traj_1_preds = self._calculate_boltzmann_pred_probs(traj1, traj2)
-                predicted_reward_probs = predicted_reward_probs.to(self.device)
-                loss = torch.nn.functional.binary_cross_entropy(
-                    predicted_reward_probs, true_label
-                )
-                # print ("   ",loss)
-
-                reward_model_loss += loss
-            reward_model_loss /= len(self.replay_buffer.buffer)
             
-            self.optimizer.zero_grad()
-            reward_model_loss.backward()
-            print ("reward model loss:")
-            print (reward_model_loss)
-            all_losses.append(reward_model_loss.item())
-            self.optimizer.step()
-            self.scheduler.step()
+            if use_minibatch:
+                BATCH_SIZE=32
+                buffer_items = [item for item in self.replay_buffer.buffer if item is not None]
+                np.random.shuffle(buffer_items)
+                reward_model_loss=0
+                for i in range(0, len(buffer_items), BATCH_SIZE):
+                    batch = buffer_items[i:i + BATCH_SIZE]
+                    batch_loss = 0
+                   
+                    for item in batch:
+                        traj1 = item['traj1']
+                        traj2 = item['traj2']
+                        true_label = item['true_label']
+
+                        predicted_reward_probs, traj_1_preds = self._calculate_boltzmann_pred_probs(traj1, traj2)
+                        predicted_reward_probs = predicted_reward_probs.to(self.device)
+                        batch_loss += torch.nn.functional.binary_cross_entropy(
+                            predicted_reward_probs, true_label
+                        )
+                    # Compute full loss and backward
+                    loss = batch_loss / len(batch)
+                    self.optimizer.zero_grad()
+                    loss.backward()
+                    
+                    self.optimizer.step()
+                    self.scheduler.step()
+
+                    reward_model_loss+= batch_loss
+                reward_model_loss /= len(buffer_items)
+                all_losses.append(reward_model_loss.item())
+                print (reward_model_loss)
+            else:
+                reward_model_loss = 0
+                for item in self.replay_buffer.buffer:
+                    if item is None:
+                        continue
+                    traj1 = item['traj1']
+                    traj2 = item['traj2']
+                    true_label = item['true_label']
+                    
+                    predicted_reward_probs, traj_1_preds = self._calculate_boltzmann_pred_probs(traj1, traj2)
+                    predicted_reward_probs = predicted_reward_probs.to(self.device)
+                    loss = torch.nn.functional.binary_cross_entropy(
+                        predicted_reward_probs, true_label
+                    )
+                    # print ("   ",loss)
+
+                    reward_model_loss += loss
+                reward_model_loss /= len(self.replay_buffer.buffer)
+                
+                self.optimizer.zero_grad()
+                reward_model_loss.backward()
+                # print ("reward model loss:")
+                print (reward_model_loss)
+                all_losses.append(reward_model_loss.item())
+                self.optimizer.step()
+                self.scheduler.step()
   
         #save model state dict with unique ID
         if self.unique_id is None:
@@ -427,12 +521,71 @@ class RewardModel(nn.Module):
             
         with open(f"active_models/reward_model_all_losses_{self.unique_id}.txt", "a") as f:
             f.write(f"Iteration {iteration}: {all_losses}\n")
-        with open(f"active_models/traj_1_preds_{self.unique_id}.txt", "a") as f:
-            f.write(f"Iteration {iteration}: {traj_1_preds}\n")
-        
+        # with open(f"active_models/traj_1_preds_{self.unique_id}.txt", "a") as f:
+        #     f.write(f"Iteration {iteration}: {traj_1_preds}\n")
         #save replay buffer
         with open(f"active_models/replay_buffer_{self.unique_id}.pkl", "wb") as f:
             torch.save(self.replay_buffer, f)
+        
+        # if self.env_name == "tomato":
+        n_incorrect = 0
+        n_hacking_traj_pairs = 0
+        with open(f"{self.env_name}_env_debug_{self.unique_id}.txt", "a") as f:
+            f.write("============TOMATO ENV=====================\n")
+            for item in self.replay_buffer.buffer:
+                if item is None:
+                    continue
+                traj1 = item['traj1']
+                traj2 = item['traj2']
+                true_label = item['true_label']
+                with torch.no_grad():
+                    traj1_pred_rew, traj2_pred_rew = self._calculate_pred_rewards(traj1, traj2)
+                    summed_traj1_preds = torch.sum(traj1_pred_rew, dim=0)
+                    summed_traj2_preds = torch.sum(traj2_pred_rew, dim=0)
+                
+                traj1_true_rewards = traj1["reward_for_pref"]
+                traj2_true_rewards = traj2["reward_for_pref"]
+
+                summed_true_rewards_1 = torch.sum(traj1_true_rewards, dim=0)
+                summed_true_rewards_2 = torch.sum(traj2_true_rewards, dim=0)
+
+                traj1_proxy_rewards = traj1["proxy_rewards"]
+                traj2_proxy_rewards = traj2["proxy_rewards"]
+
+                summed_proxy_rewards_1 = torch.sum(traj1_proxy_rewards, dim=0)
+                summed_proxy_rewards_2 = torch.sum(traj2_proxy_rewards, dim=0)
+
+                # f.write(f"traj1_proxy_rewards: {traj1_proxy_rewards}\n")
+                # f.write(f"traj2_proxy_rewards: {traj2_proxy_rewards}\n\n")
+                # f.write(f"traj1_pred_rew: {traj1_pred_rew}\n")
+                # f.write(f"traj2_pred_rew: {traj2_pred_rew}\n\n")
+                # f.write(f"traj1_true_rewards: {traj1_true_rewards}\n")
+                # f.write(f"traj2_true_rewards: {traj2_true_rewards}\n\n")
+                f.write(f"summed_proxy_rewards_1: {summed_proxy_rewards_1}\n")
+                f.write(f"summed_proxy_rewards_2: {summed_proxy_rewards_2}\n\n")
+                f.write(f"summed_traj1_preds: {summed_traj1_preds}\n")
+                f.write(f"summed_traj2_preds: {summed_traj2_preds}\n\n")
+                f.write(f"summed_true_rewards_1: {summed_true_rewards_1}\n")
+                f.write(f"summed_true_rewards_2: {summed_true_rewards_2}\n")
+
+
+                if np.argmax([summed_true_rewards_1.item(), summed_true_rewards_2.item()]) != np.argmax([summed_proxy_rewards_1.item(), summed_proxy_rewards_2.item()]):
+                    f.write("**reward hacking trajectory pair**\n")
+                    n_hacking_traj_pairs += 1
+                if abs(summed_true_rewards_1.item() - summed_true_rewards_2.item()) > 1 and np.argmax([summed_true_rewards_1.item(), summed_true_rewards_2.item()]) != np.argmax([summed_traj1_preds.item(), summed_traj2_preds.item()]):
+                    f.write("**predicted ranking is wrong**\n")
+                    n_incorrect += 1
+                f.write("------------------------------\n\n")
+            
+            f.write(f"# of incorrect predictions: {n_incorrect}\n")
+            f.write(f"# of reward hacking trajectory pairs: {n_hacking_traj_pairs}\n")
+            f.write(f"replay buffer size: {len(self.replay_buffer)}\n")
+
+            print(f"# of incorrect predictions: {n_incorrect}\n")
+            print(f"# of reward hacking trajectory pairs: {n_hacking_traj_pairs}\n")
+            print(f"replay buffer size: {len(self.replay_buffer)}\n")
+            f.write("=========================================\n")
+
 
 class RewardWrapper(Wrapper):
     def __init__(self, env, reward_model="custom", unique_id=None):
@@ -442,11 +595,23 @@ class RewardWrapper(Wrapper):
         if reward_model == "custom_pandemic":
             #load in reward model from disk
             self.reward_net = RewardModel(
-                obs_dim=2*24*13, # Assuming the observation space is a 1D array of size 24*13
+                obs_dim=24*13, # Assuming the observation space is a 1D array of size 24*13
                 action_dim=3,
                 sequence_lens=193,
                 discrete_actions = True,
                 env_name="pandemic",
+                unique_id=unique_id
+            )
+            self.reward_net.load_params(map_to_cpu=True)
+            self.reward_net.eval()
+        elif reward_model == "custom_pandemic_sas":
+            #load in reward model from disk
+            self.reward_net = RewardModel(
+                obs_dim=2*24*13, # Assuming the observation space is a 1D array of size 24*13
+                action_dim=3,
+                sequence_lens=193,
+                discrete_actions = True,
+                env_name="pandemic_sas",
                 unique_id=unique_id
             )
             self.reward_net.load_params(map_to_cpu=True)
@@ -464,15 +629,22 @@ class RewardWrapper(Wrapper):
             self.reward_net.load_params(map_to_cpu=True)
             self.reward_net.eval()
 
-        self.timestamp = os.path.getmtime(self.reward_net.get_fp())
+        if "custom" in self.reward_model:
+            self.timestamp = os.path.getmtime(self.reward_net.get_fp())
 
       
     def _get_concatenated_obs_action(self, obs, new_obs, actions):
         if self.reward_net.discrete_actions:
             encoded_actions = F.one_hot(actions.long(), self.reward_net.action_dim)
-            net_input = torch.cat([obs,new_obs, encoded_actions], dim=1)
+            if new_obs is not None:
+                net_input = torch.cat([obs,new_obs, encoded_actions], dim=1)
+            else:
+                net_input = torch.cat([obs, encoded_actions], dim=1)
         else:
-            net_input = torch.cat([obs,new_obs, actions], dim=1)
+            if new_obs is not None:
+                net_input = torch.cat([obs,new_obs, actions], dim=1)
+            else:
+                net_input = torch.cat([obs, actions], dim=1)
         net_input = net_input.to(torch.float32)
         return net_input
 
@@ -480,6 +652,11 @@ class RewardWrapper(Wrapper):
         res = np.zeros(n_classes)
         res[num] = 1
         return res
+        
+    def reset(self, **kwargs):
+        obs,info = self.env.reset(**kwargs)
+        self.last_obs = obs
+        return obs,info
 
     def step(self, action):
         # Get the original step result
@@ -496,34 +673,34 @@ class RewardWrapper(Wrapper):
             # Convert to tensors
             #check if obs is an OrderedDict
             obs_in=obs
-            las_obs_in = self.env._last_observation
+            las_obs_in = self.last_obs
             if isinstance(obs, dict):
                 #26 is the number of agents in the tomatoes env
                 obs_in = np.concatenate((self.one_hot_encode(obs["agent"],26), obs["tomatoes"]))
                 las_obs_in = np.concatenate((self.one_hot_encode(las_obs_in["agent"],26), las_obs_in["tomatoes"]))
-            else:
-                #TODO: this works for pandemic env, but might not work for other envs (need to test)
-                las_obs_in = self.env.obs_to_numpy(las_obs_in)
+            # else:
+            #     #TODO: this works for pandemic env, but might not work for other envs (need to test)
+            #     las_obs_in = self.env.obs_to_numpy(las_obs_in)
             obs_tensor = torch.from_numpy(obs_in).float().unsqueeze(0)
-            last_obs_tensor = torch.from_numpy(las_obs_in).float().unsqueeze(0)
             action_tensor = torch.tensor([action]).float()
-            # print (obs_tensor.shape)
-            # print (last_obs_tensor.shape)
-            # print (action_tensor.shape)
+            if "pandemic" in self.reward_model and "sas" not in self.reward_model:
+                last_obs_tensor = None
+            else:
+                last_obs_tensor = torch.from_numpy(las_obs_in).float().unsqueeze(0).flatten(1)
             # Concatenate and compute reward
-            net_input = self._get_concatenated_obs_action(obs_tensor.flatten(1),last_obs_tensor.flatten(1),action_tensor).to(self.reward_net.device)
+            net_input = self._get_concatenated_obs_action(obs_tensor.flatten(1),last_obs_tensor,action_tensor).to(self.reward_net.device)
             reward = self.reward_net(net_input).squeeze().item() + original_reward
             info["modified_reward"] = reward
 
-            print ("original_reward:", original_reward)
-            print ("modified reward:", reward)
-            print ("\n")
+            # print ("original_reward:", original_reward)
+            # print ("modified reward:", reward)
+            # print ("\n")
         else:
             reward = original_reward
         
         # Store original reward in info for reference
         info["original_reward"] = original_reward
         # print ("overwriting reward...")
-        
+        self.last_obs = obs
         return obs, reward, terminated, truncated, info
 

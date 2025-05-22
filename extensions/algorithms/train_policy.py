@@ -43,7 +43,7 @@ from occupancy_measures.experiments.tomato_experiments import create_tomato_conf
 from occupancy_measures.experiments.traffic_experiments import create_traffic_config
 from occupancy_measures.envs.tomato_environment import create_simple_example,Tomato_Environment
 
-from extensions.reward_modeling.reward_wrapper import RewardWrapper,RewardModel
+from extensions.reward_modeling.reward_wrapper_reg import RewardWrapper,RewardModel
 import extensions.algorithms.unique_id_state as unique_id_state
 
 # from extensions.algorithms import iterative_reward_design
@@ -67,6 +67,7 @@ def create_env_pandemic(config):
 def create_env_tomato(config):
     base_env = Tomato_Environment(config)
     # Access unique_id from the config
+    #custom_tomato
     return RewardWrapper(base_env, reward_model=config.get("reward_model", "custom_tomato"), unique_id=unique_id_state.state["unique_id"])
 
 # Make create_env a global variable that can be overridden
@@ -589,7 +590,7 @@ def main(
     # _log.info(f"algorithm.config.train_batch_size: {algorithm.config.train_batch_size}")
 
     eval_batch = synchronous_parallel_sample(
-            worker_set=algorithm.workers, max_env_steps=algorithm.config.train_batch_size*4 #worker_set=algorithm.workers, max_env_steps=algorithm.config.train_batch_size
+            worker_set=algorithm.workers, max_env_steps=100*2*20 #worker_set=algorithm.workers, max_env_steps=algorithm.config.train_batch_size
         )
     # eval_batch = eval_batch.as_multi_agent()
 
